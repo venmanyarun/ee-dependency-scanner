@@ -5,10 +5,7 @@ import io.openliberty.tools.scanner.model.DependencyInfo;
 import java.util.*;
 
 /**
- * Utility class for detecting Jakarta EE and MicroProfile platform versions
- * based on individual dependency versions.
- *
- * Uses VersionMappingRegistry for centralized version mapping logic.
+ * Detects Jakarta EE and MicroProfile platform versions from dependencies.
  */
 public class VersionDetector {
     
@@ -24,18 +21,16 @@ public class VersionDetector {
     }
     
     /**
-     * Detects Jakarta EE platform version(s) from a list of dependencies.
-     * Returns a set of versions if multiple are detected (mixed versions scenario).
+     * Detects Jakarta EE platform versions from dependencies.
+     * @param dependencies list of dependencies to analyze
+     * @return set of detected platform versions
      */
     public static Set<String> detectJakartaEEVersion(List<DependencyInfo> dependencies) {
         Set<String> versions = new HashSet<>();
         
         for (DependencyInfo dep : dependencies) {
-            if (!dep.isJakartaEE() && !dep.isJavaEE()) {
-                continue;
-            }
+            if (!dep.isJakartaEE() && !dep.isJavaEE()) continue;
             
-            // Try registry mapping first
             String platformVersion = REGISTRY.getJakartaEEPlatformVersion(
                 dep.getArtifactId(),
                 dep.getVersion()
@@ -44,7 +39,6 @@ public class VersionDetector {
             if (platformVersion != null) {
                 versions.add(platformVersion);
             } else {
-                // Fall back to inference rules
                 String inferredVersion = inferJakartaEEVersion(dep);
                 if (inferredVersion != null) {
                     versions.add(inferredVersion);
@@ -56,18 +50,16 @@ public class VersionDetector {
     }
     
     /**
-     * Detects MicroProfile platform version(s) from a list of dependencies.
-     * Returns a set of versions if multiple are detected (mixed versions scenario).
+     * Detects MicroProfile platform versions from dependencies.
+     * @param dependencies list of dependencies to analyze
+     * @return set of detected platform versions
      */
     public static Set<String> detectMicroProfileVersion(List<DependencyInfo> dependencies) {
         Set<String> versions = new HashSet<>();
         
         for (DependencyInfo dep : dependencies) {
-            if (!dep.isMicroProfile()) {
-                continue;
-            }
+            if (!dep.isMicroProfile()) continue;
             
-            // Use registry mapping
             String platformVersion = REGISTRY.getMicroProfilePlatformVersion(
                 dep.getArtifactId(),
                 dep.getVersion()
@@ -81,87 +73,71 @@ public class VersionDetector {
         return versions;
     }
     
-    /**
-     * Infers Jakarta EE / Java EE version from dependency characteristics.
-     * Supports Jakarta EE 8-11 and Java EE 6-8.
-     */
     private static String inferJakartaEEVersion(DependencyInfo dep) {
         String version = dep.getVersion();
-        if (version == null) {
-            return null;
-        }
+        if (version == null) return null;
         
-        // Servlet API version mapping
         if (dep.getArtifactId().contains("servlet")) {
-            if (version.startsWith("6.1")) return "11";  // Jakarta EE 11
-            if (version.startsWith("6.0")) return "10";  // Jakarta EE 10
-            if (version.startsWith("5.")) return "9";    // Jakarta EE 9/9.1
-            if (version.startsWith("4.")) return "8";    // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("3.1")) return "7";   // Java EE 7
-            if (version.startsWith("3.0")) return "6";   // Java EE 6
+            if (version.startsWith("6.1")) return "11";
+            if (version.startsWith("6.0")) return "10";
+            if (version.startsWith("5.")) return "9";
+            if (version.startsWith("4.")) return "8";
+            if (version.startsWith("3.1")) return "7";
+            if (version.startsWith("3.0")) return "6";
         }
         
-        // Persistence API (JPA) version mapping
         if (dep.getArtifactId().contains("persistence")) {
-            if (version.startsWith("3.2")) return "11";  // Jakarta EE 11
-            if (version.startsWith("3.1")) return "10";  // Jakarta EE 10
-            if (version.startsWith("3.0")) return "9";   // Jakarta EE 9/9.1
-            if (version.startsWith("2.2")) return "8";   // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("2.1")) return "7";   // Java EE 7
-            if (version.startsWith("2.0")) return "6";   // Java EE 6
+            if (version.startsWith("3.2")) return "11";
+            if (version.startsWith("3.1")) return "10";
+            if (version.startsWith("3.0")) return "9";
+            if (version.startsWith("2.2")) return "8";
+            if (version.startsWith("2.1")) return "7";
+            if (version.startsWith("2.0")) return "6";
         }
         
-        // CDI version mapping
         if (dep.getArtifactId().contains("cdi")) {
-            if (version.startsWith("4.1")) return "11";  // Jakarta EE 11
-            if (version.startsWith("4.0")) return "10";  // Jakarta EE 10
-            if (version.startsWith("3.")) return "9";    // Jakarta EE 9/9.1
-            if (version.startsWith("2.")) return "8";    // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("1.2")) return "7";   // Java EE 7
-            if (version.startsWith("1.1")) return "7";   // Java EE 7
-            if (version.startsWith("1.0")) return "6";   // Java EE 6
+            if (version.startsWith("4.1")) return "11";
+            if (version.startsWith("4.0")) return "10";
+            if (version.startsWith("3.")) return "9";
+            if (version.startsWith("2.")) return "8";
+            if (version.startsWith("1.2")) return "7";
+            if (version.startsWith("1.1")) return "7";
+            if (version.startsWith("1.0")) return "6";
         }
         
-        // JSF/Faces version mapping
         if (dep.getArtifactId().contains("faces") || dep.getArtifactId().contains("jsf")) {
-            if (version.startsWith("4.")) return "10";   // Jakarta EE 10+
-            if (version.startsWith("3.")) return "9";    // Jakarta EE 9/9.1
-            if (version.startsWith("2.3")) return "8";   // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("2.2")) return "7";   // Java EE 7
-            if (version.startsWith("2.1")) return "7";   // Java EE 7
-            if (version.startsWith("2.0")) return "6";   // Java EE 6
+            if (version.startsWith("4.")) return "10";
+            if (version.startsWith("3.")) return "9";
+            if (version.startsWith("2.3")) return "8";
+            if (version.startsWith("2.2")) return "7";
+            if (version.startsWith("2.1")) return "7";
+            if (version.startsWith("2.0")) return "6";
         }
         
-        // JAX-RS (RESTful Web Services) version mapping
         if (dep.getArtifactId().contains("jaxrs") || dep.getArtifactId().contains("restful")) {
-            if (version.startsWith("3.")) return "9";    // Jakarta EE 9+
-            if (version.startsWith("2.1")) return "8";   // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("2.0")) return "7";   // Java EE 7
-            if (version.startsWith("1.1")) return "6";   // Java EE 6
+            if (version.startsWith("3.")) return "9";
+            if (version.startsWith("2.1")) return "8";
+            if (version.startsWith("2.0")) return "7";
+            if (version.startsWith("1.1")) return "6";
         }
         
-        // EJB version mapping
         if (dep.getArtifactId().contains("ejb")) {
-            if (version.startsWith("4.")) return "10";   // Jakarta EE 10+
-            if (version.startsWith("3.2")) return "7";   // Java EE 7
-            if (version.startsWith("3.1")) return "6";   // Java EE 6
+            if (version.startsWith("4.")) return "10";
+            if (version.startsWith("3.2")) return "7";
+            if (version.startsWith("3.1")) return "6";
         }
         
-        // Bean Validation version mapping
         if (dep.getArtifactId().contains("validation")) {
-            if (version.startsWith("3.")) return "9";    // Jakarta EE 9+
-            if (version.startsWith("2.")) return "8";    // Jakarta EE 8 / Java EE 8
-            if (version.startsWith("1.1")) return "7";   // Java EE 7
-            if (version.startsWith("1.0")) return "6";   // Java EE 6
+            if (version.startsWith("3.")) return "9";
+            if (version.startsWith("2.")) return "8";
+            if (version.startsWith("1.1")) return "7";
+            if (version.startsWith("1.0")) return "6";
         }
         
         return null;
     }
     
     
-    /**
-     * Extracts feature name from artifact ID (delegates to registry logic).
-     */
     private static String extractFeatureName(String artifactId) {
         if (artifactId == null) {
             return null;
@@ -179,7 +155,9 @@ public class VersionDetector {
     }
     
     /**
-     * Gets a detailed version report for Jakarta EE dependencies.
+     * Gets detailed Jakarta EE feature version report.
+     * @param dependencies list of dependencies to analyze
+     * @return map of feature names to versions
      */
     public static Map<String, Set<String>> getJakartaEEFeatureVersions(List<DependencyInfo> dependencies) {
         Map<String, Set<String>> featureVersions = new HashMap<>();
@@ -201,7 +179,9 @@ public class VersionDetector {
     }
     
     /**
-     * Gets a detailed version report for MicroProfile dependencies.
+     * Gets detailed MicroProfile feature version report.
+     * @param dependencies list of dependencies to analyze
+     * @return map of feature names to versions
      */
     public static Map<String, Set<String>> getMicroProfileFeatureVersions(List<DependencyInfo> dependencies) {
         Map<String, Set<String>> featureVersions = new HashMap<>();
@@ -223,7 +203,9 @@ public class VersionDetector {
     }
     
     /**
-     * Checks if multiple versions of the same feature are detected.
+     * Checks if multiple versions of same feature detected.
+     * @param featureVersions map of features to versions
+     * @return true if conflicts exist
      */
     public static boolean hasVersionConflicts(Map<String, Set<String>> featureVersions) {
         return featureVersions.values().stream()

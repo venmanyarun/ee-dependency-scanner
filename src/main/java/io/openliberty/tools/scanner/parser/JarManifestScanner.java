@@ -12,12 +12,7 @@ import java.util.jar.Manifest;
 import java.util.jar.Attributes;
 
 /**
- * Scanner for JAR files and their MANIFEST.MF files.
- * Extracts dependency information from JAR manifests, file names, and embedded metadata.
- * Supports transitive dependency extraction from:
- * - Embedded pom.xml files
- * - MANIFEST.MF Class-Path attribute
- * - OSGi Bundle metadata
+ * Scanner for JAR files with manifest and transitive dependency extraction.
  */
 public class JarManifestScanner implements DependencyParser {
     
@@ -28,14 +23,12 @@ public class JarManifestScanner implements DependencyParser {
     
     @Override
     public int getPriority() {
-        return 200; // Low priority - fallback parser
+        return 200;
     }
     
     /**
-     * Sets whether to extract transitive dependencies from JARs.
-     * When enabled, scans embedded pom.xml, MANIFEST Class-Path, and OSGi metadata.
-     *
-     * @param extract true to extract transitive dependencies, false otherwise
+     * Enables/disables transitive dependency extraction from JARs.
+     * @param extract true to extract transitive dependencies
      */
     public void setExtractTransitiveDependencies(boolean extract) {
         this.extractTransitiveDependencies = extract;
@@ -46,19 +39,16 @@ public class JarManifestScanner implements DependencyParser {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
         if (path.isFile() && isJarFile(path)) {
-            // Single JAR file
             DependencyInfo depInfo = scanJarFile(path);
             if (depInfo != null) {
                 dependencies.add(depInfo);
             }
             
-            // Extract transitive dependencies if enabled
             if (extractTransitiveDependencies) {
                 List<DependencyInfo> transitiveDeps = JarDependencyExtractor.extractDependencies(path);
                 dependencies.addAll(transitiveDeps);
             }
         } else if (path.isDirectory()) {
-            // Scan directory for JARs
             scanDirectory(path, dependencies);
         }
         
@@ -71,7 +61,6 @@ public class JarManifestScanner implements DependencyParser {
             return isJarFile(path);
         }
         if (path.isDirectory()) {
-            // Check if directory contains JARs or is a library directory
             return containsJars(path) || isLibraryDirectory(path);
         }
         return false;
@@ -82,9 +71,6 @@ public class JarManifestScanner implements DependencyParser {
         return "JAR Scanner";
     }
     
-    /**
-     * Scans a directory recursively for JAR files.
-     */
     private void scanDirectory(File directory, List<DependencyInfo> dependencies) {
         File[] files = directory.listFiles();
         if (files == null) {
@@ -98,21 +84,16 @@ public class JarManifestScanner implements DependencyParser {
                     dependencies.add(depInfo);
                 }
                 
-                // Extract transitive dependencies if enabled
                 if (extractTransitiveDependencies) {
                     List<DependencyInfo> transitiveDeps = JarDependencyExtractor.extractDependencies(file);
                     dependencies.addAll(transitiveDeps);
                 }
             } else if (file.isDirectory() && isLibraryDirectory(file)) {
-                // Recursively scan library directories
                 scanDirectory(file, dependencies);
             }
         }
     }
     
-    /**
-     * Scans a single JAR file for dependency information.
-     */
     private DependencyInfo scanJarFile(File jarFile) {
         try (JarFile jar = new JarFile(jarFile)) {
             Manifest manifest = jar.getManifest();
@@ -120,15 +101,13 @@ public class JarManifestScanner implements DependencyParser {
             if (manifest != null) {
                 Attributes mainAttributes = manifest.getMainAttributes();
                 
-                // Try to extract Maven coordinates from manifest
-                String groupId = getManifestValue(mainAttributes, 
+                String groupId = getManifestValue(mainAttributes,
                     "Implementation-Vendor-Id", "Bundle-SymbolicName");
                 String artifactId = getManifestValue(mainAttributes,
                     "Implementation-Title", "Bundle-Name");
                 String version = getManifestValue(mainAttributes,
                     "Implementation-Version", "Bundle-Version");
                 
-                // If we found coordinates in manifest, use them
                 if (artifactId != null) {
                     return DependencyInfo.builder()
                         .groupId(groupId)
@@ -140,18 +119,13 @@ public class JarManifestScanner implements DependencyParser {
                 }
             }
             
-            // Fallback: extract from filename
             return extractFromFilename(jarFile);
             
         } catch (IOException e) {
-            // If we can't read the JAR, try to extract from filename
             return extractFromFilename(jarFile);
         }
     }
     
-    /**
-     * Gets a manifest attribute value, trying multiple possible attribute names.
-     */
     private String getManifestValue(Attributes attributes, String... names) {
         for (String name : names) {
             String value = attributes.getValue(name);
@@ -162,14 +136,9 @@ public class JarManifestScanner implements DependencyParser {
         return null;
     }
     
-    /**
-     * Extracts dependency information from JAR filename.
-     * Handles patterns like: artifactId-version.jar
-     */
     private DependencyInfo extractFromFilename(File jarFile) {
         String fileName = jarFile.getName();
         
-        // Remove extension
         for (String ext : JAR_EXTENSIONS) {
             if (fileName.endsWith(ext)) {
                 fileName = fileName.substring(0, fileName.length() - ext.length());
@@ -177,8 +146,6 @@ public class JarManifestScanner implements DependencyParser {
             }
         }
         
-        // Try to split into artifactId and version
-        // Common patterns: name-1.0.0, name-1.0, name_1.0.0
         String[] parts = fileName.split("[-_](?=\\d)");
         
         String artifactId = parts[0];
@@ -192,23 +159,14 @@ public class JarManifestScanner implements DependencyParser {
             .build();
     }
     
-    /**
-     * Cleans artifact ID by removing common suffixes and prefixes.
-     */
     private String cleanArtifactId(String artifactId) {
-        if (artifactId == null) {
-            return null;
-        }
+        if (artifactId == null) return null;
         
-        // Remove common patterns
         return artifactId
             .replaceAll("\\s+", "-")
             .toLowerCase();
     }
     
-    /**
-     * Checks if a file is a JAR file.
-     */
     private boolean isJarFile(File file) {
         String name = file.getName().toLowerCase();
         for (String ext : JAR_EXTENSIONS) {
@@ -219,9 +177,6 @@ public class JarManifestScanner implements DependencyParser {
         return false;
     }
     
-    /**
-     * Checks if a directory contains JAR files.
-     */
     private boolean containsJars(File directory) {
         File[] files = directory.listFiles();
         if (files == null) {
@@ -236,9 +191,6 @@ public class JarManifestScanner implements DependencyParser {
         return false;
     }
     
-    /**
-     * Checks if a directory is a known library directory.
-     */
     private boolean isLibraryDirectory(File directory) {
         String name = directory.getName().toLowerCase();
         for (String libDir : LIBRARY_DIRS) {

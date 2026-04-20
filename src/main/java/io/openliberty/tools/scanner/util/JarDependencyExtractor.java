@@ -16,48 +16,37 @@ import java.util.jar.Manifest;
 import java.util.jar.Attributes;
 
 /**
- * Extracts transitive dependencies from JAR files by examining:
- * 1. Embedded pom.xml (META-INF/maven/groupId/artifactId/pom.xml)
- * 2. MANIFEST.MF Class-Path attribute
- * 3. OSGi Bundle metadata
- *
- * This class can be instantiated for testing with custom extractors,
- * or used via static methods for backward compatibility.
+ * Extracts transitive dependencies from JAR files via embedded pom.xml,
+ * MANIFEST.MF Class-Path, and OSGi metadata.
  */
 public class JarDependencyExtractor {
     
     private static final JarDependencyExtractor DEFAULT_INSTANCE = new JarDependencyExtractor();
     
     /**
-     * Extracts all dependencies (direct and transitive) from a JAR file.
-     * Static method for backward compatibility.
-     *
-     * @param jarFile the JAR file to analyze
-     * @return list of dependencies found in the JAR
+     * Extracts all dependencies from JAR file.
+     * @param jarFile JAR file to analyze
+     * @return list of dependencies found
      */
     public static List<DependencyInfo> extractDependencies(File jarFile) {
         return DEFAULT_INSTANCE.extract(jarFile);
     }
     
     /**
-     * Instance method to extract all dependencies from a JAR file.
-     *
-     * @param jarFile the JAR file to analyze
-     * @return list of dependencies found in the JAR
+     * Instance method to extract dependencies from JAR.
+     * @param jarFile JAR file to analyze
+     * @return list of dependencies found
      */
     public List<DependencyInfo> extract(File jarFile) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
         try (JarFile jar = new JarFile(jarFile)) {
-            // 1. Try to extract from embedded pom.xml
             List<DependencyInfo> pomDeps = extractFromEmbeddedPom(jar);
             dependencies.addAll(pomDeps);
             
-            // 2. Try to extract from MANIFEST.MF Class-Path
             List<DependencyInfo> manifestDeps = extractFromManifestClassPath(jar);
             dependencies.addAll(manifestDeps);
             
-            // 3. Try to extract from OSGi metadata
             List<DependencyInfo> osgiBundleDeps = extractFromOSGiMetadata(jar);
             dependencies.addAll(osgiBundleDeps);
             
@@ -68,20 +57,14 @@ public class JarDependencyExtractor {
         return dependencies;
     }
     
-    /**
-     * Extracts dependencies from embedded pom.xml in JAR.
-     * Maven JARs typically include pom.xml at META-INF/maven/groupId/artifactId/pom.xml
-     */
     protected List<DependencyInfo> extractFromEmbeddedPom(JarFile jar) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
-        // Find pom.xml entries
         Enumeration<JarEntry> entries = jar.entries();
         while (entries.hasMoreElements()) {
             JarEntry entry = entries.nextElement();
             String name = entry.getName();
             
-            // Look for pom.xml in META-INF/maven/
             if (name.startsWith("META-INF/maven/") && name.endsWith("/pom.xml")) {
                 try (InputStream is = jar.getInputStream(entry)) {
                     dependencies.addAll(parsePomXml(is));
@@ -94,9 +77,6 @@ public class JarDependencyExtractor {
         return dependencies;
     }
     
-    /**
-     * Parses pom.xml InputStream and extracts dependencies.
-     */
     protected List<DependencyInfo> parsePomXml(InputStream pomStream) throws Exception {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
@@ -104,10 +84,8 @@ public class JarDependencyExtractor {
         Document document = reader.read(pomStream);
         Element root = document.getRootElement();
         
-        // Extract properties for variable resolution
         Map<String, String> properties = extractProperties(root);
         
-        // Parse dependencies
         Element dependenciesElement = root.element("dependencies");
         if (dependenciesElement != null) {
             for (Element dependency : dependenciesElement.elements("dependency")) {
@@ -121,9 +99,6 @@ public class JarDependencyExtractor {
         return dependencies;
     }
     
-    /**
-     * Extracts properties from POM for variable resolution.
-     */
     protected Map<String, String> extractProperties(Element root) {
         Map<String, String> properties = new HashMap<>();
         
@@ -134,7 +109,6 @@ public class JarDependencyExtractor {
             }
         }
         
-        // Add standard Maven properties
         Element groupId = root.element("groupId");
         if (groupId != null) {
             properties.put("project.groupId", groupId.getTextTrim());
@@ -153,25 +127,17 @@ public class JarDependencyExtractor {
         return properties;
     }
     
-    /**
-     * Parses a single dependency element.
-     */
     protected DependencyInfo parseDependency(Element dependency, Map<String, String> properties) {
         Element groupIdElement = dependency.element("groupId");
         Element artifactIdElement = dependency.element("artifactId");
         Element versionElement = dependency.element("version");
         Element scopeElement = dependency.element("scope");
         
-        if (groupIdElement == null || artifactIdElement == null) {
-            return null;
-        }
+        if (groupIdElement == null || artifactIdElement == null) return null;
         
         String scope = scopeElement != null ? scopeElement.getTextTrim() : "compile";
         
-        // Skip test and provided dependencies for transitive resolution
-        if ("test".equals(scope) || "provided".equals(scope)) {
-            return null;
-        }
+        if ("test".equals(scope) || "provided".equals(scope)) return null;
         
         String groupId = resolveProperty(groupIdElement.getTextTrim(), properties);
         String artifactId = resolveProperty(artifactIdElement.getTextTrim(), properties);
@@ -186,13 +152,8 @@ public class JarDependencyExtractor {
             .build();
     }
     
-    /**
-     * Resolves Maven property placeholders.
-     */
     protected String resolveProperty(String value, Map<String, String> properties) {
-        if (value == null || !value.contains("${")) {
-            return value;
-        }
+        if (value == null || !value.contains("${")) return value;
         
         String resolved = value;
         for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -203,29 +164,21 @@ public class JarDependencyExtractor {
         return resolved;
     }
     
-    /**
-     * Extracts dependencies from MANIFEST.MF Class-Path attribute.
-     * The Class-Path attribute lists JAR files that this JAR depends on.
-     */
     protected List<DependencyInfo> extractFromManifestClassPath(JarFile jar) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
         try {
             Manifest manifest = jar.getManifest();
-            if (manifest == null) {
-                return dependencies;
-            }
+            if (manifest == null) return dependencies;
             
             Attributes mainAttributes = manifest.getMainAttributes();
             String classPath = mainAttributes.getValue("Class-Path");
             
             if (classPath != null && !classPath.trim().isEmpty()) {
-                // Class-Path contains space-separated JAR file names or paths
                 String[] jarPaths = classPath.trim().split("\\s+");
                 
                 for (String jarPath : jarPaths) {
                     if (jarPath.endsWith(".jar")) {
-                        // Extract artifact info from JAR filename
                         DependencyInfo depInfo = extractFromJarFilename(jarPath);
                         if (depInfo != null) {
                             dependencies.add(depInfo);
@@ -240,21 +193,13 @@ public class JarDependencyExtractor {
         return dependencies;
     }
     
-    /**
-     * Extracts dependency info from JAR filename.
-     * Handles patterns like: artifactId-version.jar, groupId-artifactId-version.jar
-     */
     protected DependencyInfo extractFromJarFilename(String jarPath) {
-        // Get just the filename
         String filename = new File(jarPath).getName();
         
-        // Remove .jar extension
         if (filename.endsWith(".jar")) {
             filename = filename.substring(0, filename.length() - 4);
         }
         
-        // Try to split into artifactId and version
-        // Common patterns: name-1.0.0.jar, name-1.0.jar
         String[] parts = filename.split("-(?=\\d)");
         
         if (parts.length >= 2) {
@@ -268,7 +213,6 @@ public class JarDependencyExtractor {
                 .jarPath(jarPath)
                 .build();
         } else {
-            // No version found, just use filename as artifactId
             return DependencyInfo.builder()
                 .artifactId(filename)
                 .source(DependencySource.MANIFEST)
@@ -277,35 +221,22 @@ public class JarDependencyExtractor {
         }
     }
     
-    /**
-     * Extracts dependencies from OSGi Bundle metadata.
-     * OSGi bundles declare dependencies via Require-Bundle and Import-Package.
-     */
     protected List<DependencyInfo> extractFromOSGiMetadata(JarFile jar) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
         try {
             Manifest manifest = jar.getManifest();
-            if (manifest == null) {
-                return dependencies;
-            }
+            if (manifest == null) return dependencies;
             
             Attributes mainAttributes = manifest.getMainAttributes();
             
-            // Check if this is an OSGi bundle
             String bundleSymbolicName = mainAttributes.getValue("Bundle-SymbolicName");
-            if (bundleSymbolicName == null) {
-                return dependencies; // Not an OSGi bundle
-            }
+            if (bundleSymbolicName == null) return dependencies;
             
-            // Extract from Require-Bundle
             String requireBundle = mainAttributes.getValue("Require-Bundle");
             if (requireBundle != null) {
                 dependencies.addAll(parseOSGiRequireBundle(requireBundle));
             }
-            
-            // Note: Import-Package is more complex and typically doesn't map directly
-            // to Maven dependencies, so we skip it for now
             
         } catch (IOException e) {
             System.err.println("Failed to read OSGi metadata: " + e.getMessage());
@@ -314,14 +245,9 @@ public class JarDependencyExtractor {
         return dependencies;
     }
     
-    /**
-     * Parses OSGi Require-Bundle header.
-     * Format: bundle1;bundle-version="[1.0.0,2.0.0)",bundle2;bundle-version="1.5.0"
-     */
     protected List<DependencyInfo> parseOSGiRequireBundle(String requireBundle) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
-        // Split by comma (but not within quotes or brackets)
         String[] bundles = requireBundle.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
         
         for (String bundle : bundles) {

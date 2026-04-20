@@ -12,8 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parser for Gradle build files (build.gradle and build.gradle.kts).
- * Performs single-pass parsing with variable resolution.
+ * Parser for Gradle build files with variable resolution.
  */
 public class GradleBuildParser implements DependencyParser {
     
@@ -22,21 +21,18 @@ public class GradleBuildParser implements DependencyParser {
     
     @Override
     public int getPriority() {
-        return 20; // High priority - Gradle is authoritative
+        return 20;
     }
     
-    // Patterns for dependency declarations
     private static final Pattern DEPENDENCY_PATTERN = Pattern.compile(
         "(?:implementation|api|compile|compileOnly|runtimeOnly|testImplementation|testCompile)\\s*[\\(\\s]+" +
         "['\"]([^:]+):([^:]+):([^'\"]+)['\"]"
     );
     
-    // Pattern for variable declarations
     private static final Pattern VARIABLE_PATTERN = Pattern.compile(
         "(?:def|val|var)\\s+(\\w+)\\s*=\\s*['\"]([^'\"]+)['\"]"
     );
     
-    // Pattern for property references
     private static final Pattern PROPERTY_PATTERN = Pattern.compile(
         "\\$\\{?([\\w.]+)\\}?"
     );
@@ -60,18 +56,13 @@ public class GradleBuildParser implements DependencyParser {
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
                     
-                    // Skip comments and empty lines
-                    if (line.isEmpty() || line.startsWith("//") || line.startsWith("/*")) {
-                        continue;
-                    }
+                    if (line.isEmpty() || line.startsWith("//") || line.startsWith("/*")) continue;
                     
-                    // Extract variables
                     Matcher varMatcher = VARIABLE_PATTERN.matcher(line);
                     if (varMatcher.find()) {
                         variables.put(varMatcher.group(1), varMatcher.group(2));
                     }
                     
-                    // Extract dependencies
                     Matcher depMatcher = DEPENDENCY_PATTERN.matcher(line);
                     if (depMatcher.find()) {
                         String groupId = resolveVariables(depMatcher.group(1), variables);
@@ -107,9 +98,6 @@ public class GradleBuildParser implements DependencyParser {
         return "Gradle";
     }
     
-    /**
-     * Finds build.gradle or build.gradle.kts file in the given path.
-     */
     private File findBuildFile(File path) {
         if (path.isFile()) {
             String name = path.getName();
@@ -133,13 +121,8 @@ public class GradleBuildParser implements DependencyParser {
         return null;
     }
     
-    /**
-     * Resolves variable references in a string.
-     */
     private String resolveVariables(String value, Map<String, String> variables) {
-        if (value == null || (!value.contains("$") && !value.contains("{"))) {
-            return value;
-        }
+        if (value == null || (!value.contains("$") && !value.contains("{"))) return value;
         
         String resolved = value;
         Matcher matcher = PROPERTY_PATTERN.matcher(value);

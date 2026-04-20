@@ -1,7 +1,7 @@
 package io.openliberty.tools.scanner.parser;
 
 /**
- * Exception thrown when a parser encounters an error during dependency parsing.
+ * Exception thrown when parser encounters an error.
  */
 public class ParserException extends Exception {
     

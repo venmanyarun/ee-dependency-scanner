@@ -3,8 +3,7 @@ package io.openliberty.tools.scanner.model;
 import java.util.Objects;
 
 /**
- * Represents a single dependency detected by the scanner.
- * Contains Maven coordinates, classification, and metadata about the dependency.
+ * Represents a detected dependency with Maven coordinates and metadata.
  */
 public class DependencyInfo {
     private final String groupId;
@@ -41,7 +40,6 @@ public class DependencyInfo {
         return sb.toString();
     }
 
-    // Getters
     public String getGroupId() {
         return groupId;
     }
@@ -70,23 +68,14 @@ public class DependencyInfo {
         return coordinate;
     }
 
-    /**
-     * Checks if this dependency is a Jakarta EE dependency.
-     */
     public boolean isJakartaEE() {
         return type == DependencyType.JAKARTA_EE;
     }
 
-    /**
-     * Checks if this dependency is a Java EE dependency.
-     */
     public boolean isJavaEE() {
         return type == DependencyType.JAVA_EE;
     }
 
-    /**
-     * Checks if this dependency is a MicroProfile dependency.
-     */
     public boolean isMicroProfile() {
         return type == DependencyType.MICROPROFILE;
     }
@@ -117,15 +106,13 @@ public class DependencyInfo {
     }
 
     /**
-     * Creates a new Builder for constructing DependencyInfo instances.
+     * Creates new builder for DependencyInfo.
+     * @return new builder instance
      */
     public static Builder builder() {
         return new Builder();
     }
 
-    /**
-     * Builder class for DependencyInfo.
-     */
     public static class Builder {
         private String groupId;
         private String artifactId;
@@ -164,10 +151,6 @@ public class DependencyInfo {
             return this;
         }
 
-        /**
-         * Builds the DependencyInfo instance.
-         * At minimum, artifactId should be provided.
-         */
         public DependencyInfo build() {
             if (artifactId == null || artifactId.trim().isEmpty()) {
                 throw new IllegalArgumentException("artifactId is required");

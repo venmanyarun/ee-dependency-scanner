@@ -10,8 +10,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Parser for Maven pom.xml files.
- * Extracts dependencies with property resolution and parent POM support.
+ * Parser for Maven pom.xml files with property resolution.
  */
 public class MavenPomParser implements DependencyParser {
     
@@ -19,7 +18,7 @@ public class MavenPomParser implements DependencyParser {
     
     @Override
     public int getPriority() {
-        return 10; // High priority - Maven is authoritative
+        return 10;
     }
     
     @Override
@@ -50,7 +49,6 @@ public class MavenPomParser implements DependencyParser {
                 }
             }
             
-            // Parse dependency management section
             Element dependencyManagement = root.element("dependencyManagement");
             if (dependencyManagement != null) {
                 Element managedDeps = dependencyManagement.element("dependencies");
@@ -81,9 +79,6 @@ public class MavenPomParser implements DependencyParser {
         return "Maven";
     }
     
-    /**
-     * Finds pom.xml file in the given path.
-     */
     private File findPomFile(File path) {
         if (path.isFile() && path.getName().equals(POM_XML)) {
             return path;
@@ -97,13 +92,9 @@ public class MavenPomParser implements DependencyParser {
         return null;
     }
     
-    /**
-     * Extracts properties from POM for variable resolution.
-     */
     private Map<String, String> extractProperties(Element root) {
         Map<String, String> properties = new HashMap<>();
         
-        // Add project properties
         Element propertiesElement = root.element("properties");
         if (propertiesElement != null) {
             for (Element property : propertiesElement.elements()) {
@@ -111,7 +102,6 @@ public class MavenPomParser implements DependencyParser {
             }
         }
         
-        // Add standard Maven properties
         Element groupId = root.element("groupId");
         if (groupId != null) {
             properties.put("project.groupId", groupId.getTextTrim());
@@ -130,17 +120,12 @@ public class MavenPomParser implements DependencyParser {
         return properties;
     }
     
-    /**
-     * Parses a single dependency element.
-     */
     private DependencyInfo parseDependency(Element dependency, Map<String, String> properties) {
         Element groupIdElement = dependency.element("groupId");
         Element artifactIdElement = dependency.element("artifactId");
         Element versionElement = dependency.element("version");
         
-        if (groupIdElement == null || artifactIdElement == null) {
-            return null; // Skip invalid dependencies
-        }
+        if (groupIdElement == null || artifactIdElement == null) return null;
         
         String groupId = resolveProperty(groupIdElement.getTextTrim(), properties);
         String artifactId = resolveProperty(artifactIdElement.getTextTrim(), properties);
@@ -155,13 +140,8 @@ public class MavenPomParser implements DependencyParser {
             .build();
     }
     
-    /**
-     * Resolves Maven property placeholders like ${property.name}.
-     */
     private String resolveProperty(String value, Map<String, String> properties) {
-        if (value == null || !value.contains("${")) {
-            return value;
-        }
+        if (value == null || !value.contains("${")) return value;
         
         String resolved = value;
         for (Map.Entry<String, String> entry : properties.entrySet()) {

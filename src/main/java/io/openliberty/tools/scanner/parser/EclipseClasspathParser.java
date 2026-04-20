@@ -12,8 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parser for Eclipse .classpath files.
- * Extracts dependencies with M2_REPO variable resolution.
+ * Parser for Eclipse .classpath files with M2_REPO resolution.
  */
 public class EclipseClasspathParser implements DependencyParser {
     
@@ -22,11 +21,9 @@ public class EclipseClasspathParser implements DependencyParser {
     
     @Override
     public int getPriority() {
-        return 100; // Medium priority - IDE-specific
+        return 100;
     }
     
-    // Pattern to extract Maven coordinates from path
-    // Example: M2_REPO/jakarta/servlet/jakarta.servlet-api/6.0.0/jakarta.servlet-api-6.0.0.jar
     private static final Pattern MAVEN_PATH_PATTERN = Pattern.compile(
         "([^/]+)/([^/]+)/([^/]+)/([^/]+\\.jar)$"
     );
@@ -45,16 +42,12 @@ public class EclipseClasspathParser implements DependencyParser {
             
             List<DependencyInfo> dependencies = new ArrayList<>();
             
-            // Parse classpath entries
             for (Element entry : root.elements("classpathentry")) {
                 String kind = entry.attributeValue("kind");
                 String entryPath = entry.attributeValue("path");
                 
-                if (entryPath == null) {
-                    continue;
-                }
+                if (entryPath == null) continue;
                 
-                // Handle variable entries (M2_REPO)
                 if ("var".equals(kind) && entryPath.startsWith(M2_REPO)) {
                     DependencyInfo depInfo = parseMavenPath(entryPath);
                     if (depInfo != null) {
@@ -62,7 +55,6 @@ public class EclipseClasspathParser implements DependencyParser {
                     }
                 }
                 
-                // Handle library entries
                 if ("lib".equals(kind)) {
                     DependencyInfo depInfo = parseLibraryPath(entryPath);
                     if (depInfo != null) {
@@ -88,9 +80,6 @@ public class EclipseClasspathParser implements DependencyParser {
         return "Eclipse";
     }
     
-    /**
-     * Finds .classpath file in the given path.
-     */
     private File findClasspathFile(File path) {
         if (path.isFile() && path.getName().equals(CLASSPATH_FILE)) {
             return path;
@@ -104,27 +93,14 @@ public class EclipseClasspathParser implements DependencyParser {
         return null;
     }
     
-    /**
-     * Parses Maven coordinates from M2_REPO path.
-     * Example: M2_REPO/jakarta/servlet/jakarta.servlet-api/6.0.0/jakarta.servlet-api-6.0.0.jar
-     */
     private DependencyInfo parseMavenPath(String path) {
-        // Remove M2_REPO prefix
         String relativePath = path.substring(M2_REPO.length() + 1);
-        
-        // Split path into components
         String[] parts = relativePath.split("/");
-        if (parts.length < 4) {
-            return null;
-        }
+        if (parts.length < 4) return null;
         
-        // Extract version (second to last component)
         String version = parts[parts.length - 2];
-        
-        // Extract artifactId (third to last component)
         String artifactId = parts[parts.length - 3];
         
-        // Extract groupId (everything before artifactId)
         StringBuilder groupIdBuilder = new StringBuilder();
         for (int i = 0; i < parts.length - 3; i++) {
             if (i > 0) groupIdBuilder.append(".");
@@ -141,11 +117,7 @@ public class EclipseClasspathParser implements DependencyParser {
             .build();
     }
     
-    /**
-     * Parses library path to extract dependency information.
-     */
     private DependencyInfo parseLibraryPath(String path) {
-        // Try to extract Maven coordinates from path
         Matcher matcher = MAVEN_PATH_PATTERN.matcher(path);
         if (matcher.find()) {
             String groupId = matcher.group(1).replace('/', '.');
@@ -161,7 +133,6 @@ public class EclipseClasspathParser implements DependencyParser {
                 .build();
         }
         
-        // If we can't extract Maven coordinates, create a basic entry
         String fileName = new File(path).getName();
         if (fileName.endsWith(".jar")) {
             String artifactId = fileName.substring(0, fileName.length() - 4);

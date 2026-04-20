@@ -4,8 +4,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Represents the complete result of a classpath analysis.
- * Contains all detected dependencies, categorized by type, along with metadata about the analysis.
+ * Complete result of classpath analysis with categorized dependencies and metadata.
  */
 public class ClasspathAnalysisResult {
     private final List<DependencyInfo> allDependencies;
@@ -44,15 +43,9 @@ public class ClasspathAnalysisResult {
         this.microProfileVersions = detectMicroProfileVersions();
     }
 
-    /**
-     * Detects Jakarta EE platform versions based on dependency versions.
-     * Also includes Java EE dependencies for version detection.
-     * Returns a map of feature names to their detected versions.
-     */
     private Map<String, Set<String>> detectJakartaEEVersions() {
         Map<String, Set<String>> versions = new HashMap<>();
         
-        // Include both Jakarta EE and Java EE dependencies
         for (DependencyInfo dep : jakartaEEDependencies) {
             String feature = extractFeatureName(dep.getArtifactId());
             String version = dep.getVersion();
@@ -74,10 +67,6 @@ public class ClasspathAnalysisResult {
         return Collections.unmodifiableMap(versions);
     }
 
-    /**
-     * Detects MicroProfile platform versions based on dependency versions.
-     * Returns a map of feature names to their detected versions.
-     */
     private Map<String, Set<String>> detectMicroProfileVersions() {
         Map<String, Set<String>> versions = new HashMap<>();
         
@@ -93,49 +82,36 @@ public class ClasspathAnalysisResult {
         return Collections.unmodifiableMap(versions);
     }
 
-    /**
-     * Extracts feature name from artifact ID.
-     * Example: "jakarta.servlet-api" -> "servlet"
-     */
     private String extractFeatureName(String artifactId) {
         if (artifactId == null) return null;
         
-        // Remove common suffixes
-        String name = artifactId
+        return artifactId
             .replaceAll("-api$", "")
             .replaceAll("-spec$", "")
             .replaceAll("^jakarta\\.", "")
             .replaceAll("^javax\\.", "")
             .replaceAll("^microprofile-", "");
-        
-        return name;
     }
 
     /**
-     * Gets the detected Jakarta EE platform version(s).
-     * Returns a set of versions if multiple are detected (mixed versions scenario).
+     * Gets detected Jakarta EE platform versions.
+     * @return set of platform versions (may contain multiple if mixed)
      */
     public Set<String> getJakartaEEPlatformVersions() {
         return inferPlatformVersion(jakartaEEVersions);
     }
 
     /**
-     * Gets the detected MicroProfile platform version(s).
-     * Returns a set of versions if multiple are detected (mixed versions scenario).
+     * Gets detected MicroProfile platform versions.
+     * @return set of platform versions (may contain multiple if mixed)
      */
     public Set<String> getMicroProfilePlatformVersions() {
         return inferPlatformVersion(microProfileVersions);
     }
 
-    /**
-     * Infers platform version from feature versions.
-     * This is a simplified implementation - real version detection would use
-     * a mapping table of feature versions to platform versions.
-     */
     private Set<String> inferPlatformVersion(Map<String, Set<String>> featureVersions) {
         Set<String> platformVersions = new HashSet<>();
         
-        // Collect all major versions
         for (Set<String> versions : featureVersions.values()) {
             for (String version : versions) {
                 String majorVersion = extractMajorVersion(version);
@@ -148,10 +124,6 @@ public class ClasspathAnalysisResult {
         return platformVersions;
     }
 
-    /**
-     * Extracts major version from a version string.
-     * Example: "6.0.0" -> "6", "5.0" -> "5"
-     */
     private String extractMajorVersion(String version) {
         if (version == null) return null;
         
@@ -163,38 +135,31 @@ public class ClasspathAnalysisResult {
     }
 
     /**
-     * Gets detailed version information for Jakarta EE features.
-     * Returns a map of feature names to their detected versions.
+     * Gets detailed Jakarta EE feature versions.
+     * @return map of feature names to their versions
      */
     public Map<String, Set<String>> getJakartaEEFeatureVersions() {
         return jakartaEEVersions;
     }
 
     /**
-     * Gets detailed version information for MicroProfile features.
-     * Returns a map of feature names to their detected versions.
+     * Gets detailed MicroProfile feature versions.
+     * @return map of feature names to their versions
      */
     public Map<String, Set<String>> getMicroProfileFeatureVersions() {
         return microProfileVersions;
     }
 
-    /**
-     * Checks if multiple versions of Jakarta EE features are detected.
-     */
     public boolean hasMultipleJakartaEEVersions() {
         return jakartaEEVersions.values().stream()
             .anyMatch(versions -> versions.size() > 1);
     }
 
-    /**
-     * Checks if multiple versions of MicroProfile features are detected.
-     */
     public boolean hasMultipleMicroProfileVersions() {
         return microProfileVersions.values().stream()
             .anyMatch(versions -> versions.size() > 1);
     }
 
-    // Getters
     public List<DependencyInfo> getAllDependencies() {
         return allDependencies;
     }
@@ -227,9 +192,6 @@ public class ClasspathAnalysisResult {
         return detectionMethod;
     }
 
-    /**
-     * Returns a summary of the analysis result.
-     */
     public String getSummary() {
         StringBuilder sb = new StringBuilder();
         sb.append("Classpath Analysis Summary:\n");
@@ -259,16 +221,10 @@ public class ClasspathAnalysisResult {
         return getSummary();
     }
 
-    /**
-     * Creates a new Builder for constructing ClasspathAnalysisResult instances.
-     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /**
-     * Builder class for ClasspathAnalysisResult.
-     */
     public static class Builder {
         private List<DependencyInfo> allDependencies = new ArrayList<>();
         private int totalJarsScanned = 0;
