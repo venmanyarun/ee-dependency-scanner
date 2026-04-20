@@ -419,6 +419,89 @@ for (File module : modules) {
 }
 ```
 
+## SPI Integration Examples
+
+The `spi-examples/` directory contains complete integration examples for Liberty Tools projects:
+
+### Available Integrations
+
+1. **LSP4Jakarta Integration** (`spi-examples/lsp4jakarta-adapter-impl/`)
+   - Provider-based integration using `IProjectLabelProvider` (recommended)
+   - Direct integration using `LSP4JakartaDependencyAnalyzer`
+   - Provides Jakarta EE and Java EE version labels for diagnostics
+   - Three-tier dependency collection (M2E → Buildship → JDT)
+
+2. **LSP4MP Integration** (`spi-examples/lsp4mp-adapter-impl/`)
+   - Provider-based integration using `IProjectLabelProvider` (recommended)
+   - Direct integration using `LSP4MPDependencyAnalyzer`
+   - Provides Jakarta EE and MicroProfile version labels
+   - Three-tier dependency collection (M2E → Buildship → JDT)
+
+3. **Eclipse Adapter** (`spi-examples/scanner-eclipse-adapter-impl/`)
+   - Complete reference implementation for Eclipse IDE
+   - Uses M2E, Buildship, and JDT APIs
+   - Demonstrates three-tier dependency collection approach
+
+4. **IntelliJ Adapter** (`spi-examples/scanner-intellij-adapter-impl/`)
+   - Complete reference implementation for IntelliJ IDEA
+   - Uses IntelliJ Platform APIs (ModuleRootManager, OrderEntry, Library)
+   - Shows how to integrate with IntelliJ's project model
+
+### Quick Start
+
+For LSP4Jakarta and LSP4MP, the **provider-based approach is recommended** as it:
+- Follows existing architectural patterns
+- Requires minimal code changes
+- Automatically propagates labels to all diagnostics and code actions
+- Provides comprehensive M2E and Buildship support
+
+Example for LSP4Jakarta:
+```java
+// 1. Copy EEVersionProjectLabelProvider.java to your project
+// 2. Register in plugin.xml:
+<extension point="org.eclipse.lsp4jakarta.jdt.core.projectLabelProviders">
+  <provider class="org.eclipse.lsp4jakarta.jdt.core.ee.EEVersionProjectLabelProvider"/>
+</extension>
+
+// 3. Labels are automatically available in diagnostics:
+// - jakartaee, jakartaee-9, jakartaee-10
+// - javaee, javaee-6, javaee-7, javaee-8
+```
+
+For detailed documentation, see:
+- [SPI Examples README](spi-examples/README.md) - Overview and comparison of all approaches
+- [LSP4Jakarta Integration](spi-examples/lsp4jakarta-adapter-impl/README.md)
+- [LSP4MP Integration](spi-examples/lsp4mp-adapter-impl/README.md)
+- [Eclipse Adapter](spi-examples/scanner-eclipse-adapter-impl/README.md)
+- [IntelliJ Adapter](spi-examples/scanner-intellij-adapter-impl/README.md)
+
+### DependencyAnalysisHelper Utility
+
+All integrations use the `DependencyAnalysisHelper` utility class which provides:
+- Dependency creation with Builder pattern
+- JAR dependency extraction
+- Version detection (Jakarta EE 5-11, MicroProfile 1.0-6.x)
+- Filtering by type (Jakarta EE, Java EE, MicroProfile)
+- Deduplication with intelligent selection
+- Primary version detection
+
+```java
+import io.openliberty.tools.scanner.util.DependencyAnalysisHelper;
+
+// Create helper
+DependencyAnalysisHelper helper = new DependencyAnalysisHelper();
+
+// Create dependency
+DependencyInfo dep = helper.createDependency(
+    "jakarta.servlet", "jakarta.servlet-api", "6.0.0",
+    DependencySource.IDE_RESOLVED, DependencyType.JAKARTA_EE
+);
+
+// Detect versions
+ClasspathAnalysisResult result = helper.detectVersions(dependencies);
+String primaryVersion = helper.getPrimaryVersion(result.getJakartaEEPlatformVersions());
+```
+
 ## Contributing
 
 Contributions are welcome! Please follow these guidelines:

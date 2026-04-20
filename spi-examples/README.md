@@ -4,7 +4,7 @@ This directory contains reference implementations showing how to use the EE Depe
 
 ## Overview
 
-The EE Dependency Scanner provides a `DependencyAnalysisHelper` utility class that simplifies integration with IDE plugins and language servers. This directory contains complete reference implementations for Eclipse, IntelliJ IDEA, LSP4Jakarta, and LSP4MP.
+The EE Dependency Scanner provides a `DependencyAnalysisHelper` utility class that simplifies integration with IDE plugins and language servers. This directory contains complete reference implementations for Eclipse, IntelliJ IDEA, LSP4Jakarta, and LSP4MP, including **provider-based integrations** that follow the architectural patterns of LSP4Jakarta and LSP4MP.
 
 ## Directory Structure
 
@@ -18,10 +18,12 @@ spi-examples/
 │   ├── IntelliJProjectModelParserImpl.java
 │   └── README.md
 ├── lsp4jakarta-adapter-impl/           # LSP4Jakarta language server integration
-│   ├── LSP4JakartaDependencyAnalyzer.java
+│   ├── LSP4JakartaDependencyAnalyzer.java      # Direct integration
+│   ├── EEVersionProjectLabelProvider.java      # Provider-based (RECOMMENDED)
 │   └── README.md
 └── lsp4mp-adapter-impl/                # LSP4MP language server integration
-    ├── LSP4MPDependencyAnalyzer.java
+    ├── LSP4MPDependencyAnalyzer.java           # Direct integration
+    ├── EEVersionProjectLabelProvider.java      # Provider-based (RECOMMENDED)
     └── README.md
 ```
 
@@ -60,12 +62,66 @@ List<DependencyInfo> deduplicate(List<DependencyInfo> dependencies)
 
 - **Eclipse**: [scanner-eclipse-adapter-impl/](./scanner-eclipse-adapter-impl/) - Shows M2E, Buildship, and JDT integration
 - **IntelliJ**: [scanner-intellij-adapter-impl/](./scanner-intellij-adapter-impl/) - Shows IntelliJ Platform API usage
-- **LSP4Jakarta**: [lsp4jakarta-adapter-impl/](./lsp4jakarta-adapter-impl/) - Shows Jakarta EE language server integration using JDT
-- **LSP4MP**: [lsp4mp-adapter-impl/](./lsp4mp-adapter-impl/) - Shows MicroProfile language server integration using JDT
+- **LSP4Jakarta**: [lsp4jakarta-adapter-impl/](./lsp4jakarta-adapter-impl/) - Shows Jakarta EE language server integration (provider-based recommended)
+- **LSP4MP**: [lsp4mp-adapter-impl/](./lsp4mp-adapter-impl/) - Shows MicroProfile language server integration (provider-based recommended)
+
+## Integration Approaches
+
+### For IDE Plugins (Eclipse, IntelliJ)
+
+Use the adapter pattern to collect dependencies using native IDE APIs:
+
+```java
+// Eclipse: Use M2E, Buildship, or JDT
+// IntelliJ: Use Module APIs
+```
+
+See: [scanner-eclipse-adapter-impl/](./scanner-eclipse-adapter-impl/) and [scanner-intellij-adapter-impl/](./scanner-intellij-adapter-impl/)
+
+### For Language Servers (LSP4Jakarta, LSP4MP) - RECOMMENDED
+
+Use the **provider-based integration** that implements `IProjectLabelProvider`:
+
+#### Registration (plugin.xml)
+```xml
+<!-- LSP4Jakarta -->
+<extension point="org.eclipse.lsp4jakarta.jdt.core.projectLabelProviders">
+  <provider class="org.eclipse.lsp4jakarta.jdt.internal.core.providers.EEVersionProjectLabelProvider"/>
+</extension>
+
+<!-- LSP4MP -->
+<extension point="org.eclipse.lsp4mp.jdt.core.projectLabelProviders">
+  <provider class="org.eclipse.lsp4mp.jdt.internal.core.providers.EEVersionProjectLabelProvider"/>
+</extension>
+```
+
+#### Usage in Diagnostics
+```java
+public List<Diagnostic> collectDiagnostics(JavaDiagnosticsContext context) {
+    // Labels are automatically available!
+    List<String> labels = context.getProjectLabels();
+    
+    if (labels.contains("jakartaee-9") || labels.contains("jakartaee-10")) {
+        // Apply Jakarta EE 9+ diagnostics (jakarta.* namespace)
+    } else if (labels.contains("javaee-8")) {
+        // Apply Java EE 8 diagnostics (javax.* namespace)
+    }
+}
+```
+
+#### Labels Provided
+
+**LSP4Jakarta:**
+- `jakartaee`, `jakartaee-9`, `jakartaee-10`, `jakartaee-11`
+- `javaee`, `javaee-5`, `javaee-6`, `javaee-7`, `javaee-8`
+
+**LSP4MP:**
+- `jakartaee`, `jakartaee-9`, `jakartaee-10`
+- `microprofile`, `microprofile-1.0` through `microprofile-6.x`
 
 ## Integration Pattern
 
-The typical integration pattern:
+### Basic Pattern (All Integrations)
 
 ```java
 // 1. Initialize helper
@@ -94,6 +150,24 @@ String mpVersion = helper.getPrimaryVersion(versions.get("microProfile"));
 return new ClasspathAnalysisResult(dependencies, jakartaVersion, mpVersion, versions);
 ```
 
+### Provider Pattern (LSP4Jakarta, LSP4MP)
+
+```java
+public class EEVersionProjectLabelProvider implements IProjectLabelProvider {
+    
+    @Override
+    public List<String> getProjectLabels(IJavaProject project) {
+        // 1. Analyze dependencies using three-tier approach:
+        //    - Try M2E (Maven) first
+        //    - Try Buildship (Gradle) second
+        //    - Fall back to JDT classpath
+        
+        // 2. Return version labels
+        return Arrays.asList("jakartaee", "jakartaee-10");
+    }
+}
+```
+
 ## Eclipse Adapter
 
 The Eclipse implementation shows how to:
@@ -116,19 +190,44 @@ See: [scanner-intellij-adapter-impl/README.md](./scanner-intellij-adapter-impl/R
 
 ## LSP4Jakarta Integration
 
-The LSP4Jakarta integration shows how to:
-- Use Eclipse JDT APIs in a language server
-- Detect Jakarta EE versions
-- Provide version-specific diagnostics
+The LSP4Jakarta integration provides **two approaches**:
+
+### Provider-based Integration (RECOMMENDED)
+- Implements `IProjectLabelProvider` interface
+- Follows LSP4Jakarta's architecture
+- Automatic label propagation to all diagnostics/code actions
+- Three-tier dependency collection (M2E → Buildship → JDT)
+- Built-in caching
+
+### Direct Integration
+- For custom analysis logic
+- More control but requires more code
+
+**Features:**
+- Detect Jakarta EE and Java EE versions
 - Handle namespace differences (javax.* vs jakarta.*)
+- Provide version-specific diagnostics
 
 See: [lsp4jakarta-adapter-impl/README.md](./lsp4jakarta-adapter-impl/README.md)
 
 ## LSP4MP Integration
 
-The LSP4MP integration shows how to:
-- Use Eclipse JDT APIs in a language server
+The LSP4MP integration provides **two approaches**:
+
+### Provider-based Integration (RECOMMENDED)
+- Implements `IProjectLabelProvider` interface
+- Follows LSP4MP's architecture
+- Automatic label propagation to all diagnostics/code actions
+- Three-tier dependency collection (M2E → Buildship → JDT)
+- Built-in caching
+
+### Direct Integration
+- For custom analysis logic
+- More control but requires more code
+
+**Features:**
 - Detect MicroProfile versions
+- Detect Jakarta EE versions (for MP 4.0+)
 - Handle MicroProfile 4.0+ namespace changes
 - Provide API-specific diagnostics and code actions
 
@@ -178,57 +277,62 @@ File jarFile = new File("lib/my-library.jar");
 List<DependencyInfo> deps = helper.extractDependenciesFromJar(jarFile);
 ```
 
-### Check API Availability (Language Servers)
+### Use Labels in Language Servers (Provider-based)
 
 ```java
 // LSP4Jakarta
-boolean hasServlet = analyzer.isApiAvailable(result, 
-    "jakarta.servlet", "jakarta.servlet-api");
+public List<Diagnostic> collectDiagnostics(JavaDiagnosticsContext context) {
+    List<String> labels = context.getProjectLabels();
+    
+    if (labels.contains("jakartaee-9") || labels.contains("jakartaee-10")) {
+        // Jakarta EE 9+ - use jakarta.* namespace
+        return checkJakartaNamespace(context);
+    } else if (labels.contains("javaee-8")) {
+        // Java EE 8 - use javax.* namespace
+        return checkJavaxNamespace(context);
+    }
+}
 
 // LSP4MP
-boolean hasConfig = analyzer.isApiAvailable(result,
-    "org.eclipse.microprofile.config", "microprofile-config-api");
+public List<Diagnostic> collectDiagnostics(JavaDiagnosticsContext context) {
+    List<String> labels = context.getProjectLabels();
+    
+    if (labels.stream().anyMatch(l -> l.startsWith("microprofile-4") || 
+                                       l.startsWith("microprofile-5"))) {
+        // MicroProfile 4.0+ uses jakarta.* namespace
+        return checkMicroProfileJakartaNamespace(context);
+    }
+}
 ```
 
 ## Best Practices
 
 1. **Use DependencyAnalysisHelper**: Don't manually create DependencyInfo objects
-2. **Prefer IDE APIs**: Use native IDE APIs for dependency collection when available
-3. **Implement Fallbacks**: Have fallback strategies (e.g., JAR extraction) when IDE APIs fail
-4. **Deduplicate**: Always deduplicate dependencies before analysis
-5. **Handle Errors**: Gracefully handle missing dependencies or parsing errors
-6. **Cache Results**: Cache analysis results to improve performance (especially in language servers)
+2. **Prefer Provider-based Integration**: For LSP4Jakarta and LSP4MP, use the provider pattern
+3. **Prefer IDE APIs**: Use native IDE APIs (M2E, Buildship) for dependency collection when available
+4. **Implement Fallbacks**: Have fallback strategies (e.g., JAR extraction) when IDE APIs fail
+5. **Deduplicate**: Always deduplicate dependencies before analysis
+6. **Handle Errors**: Gracefully handle missing dependencies or parsing errors
+7. **Cache Results**: Cache analysis results to improve performance (especially in language servers)
 
-## Integration Approaches
+## Three-Tier Dependency Collection
 
-### IDE Plugin Approach (Eclipse, IntelliJ)
+The provider-based integrations use a smart three-tier approach:
 
-IDE plugins have direct access to project models and can collect dependencies using native APIs:
+### 1. M2E (Maven) - Priority 1
+- Uses Maven Integration for Eclipse APIs
+- Best accuracy for Maven projects
+- Direct access to Maven project model
 
-```java
-// Eclipse: Use M2E or Buildship APIs
-IMavenProjectFacade facade = MavenPlugin.getMavenProjectRegistry().getProject(project);
-MavenProject mavenProject = facade.getMavenProject(null);
+### 2. Buildship (Gradle) - Priority 2
+- Uses Gradle Integration for Eclipse APIs
+- Best accuracy for Gradle projects
+- Direct access to Gradle project model
 
-// IntelliJ: Use Module APIs
-Module module = ModuleManager.getInstance(project).getModules()[0];
-ModuleRootManager rootManager = ModuleRootManager.getInstance(module);
-```
-
-### Language Server Approach (LSP4Jakarta, LSP4MP)
-
-Language servers that run in Eclipse use JDT APIs to collect classpath information:
-
-```java
-// Get Eclipse project
-IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
-
-// Get Java project
-IJavaProject javaProject = JavaCore.create(project);
-
-// Get resolved classpath
-IClasspathEntry[] entries = javaProject.getResolvedClasspath(true);
-```
+### 3. JDT Classpath (Fallback) - Priority 3
+- Extracts dependencies from JAR files
+- Works for any project type
+- Universal fallback
 
 ## Version Detection Features
 
@@ -242,6 +346,18 @@ IClasspathEntry[] entries = javaProject.getResolvedClasspath(true);
 - MicroProfile 1.0 - 6.x
 - Automatic detection of namespace changes (MP 4.0+ uses jakarta.*)
 
+## Comparison: Provider vs Direct Integration
+
+| Feature | Provider-based | Direct Integration |
+|---------|---------------|-------------------|
+| Integration Effort | Low | Medium |
+| Code Changes | Minimal | More extensive |
+| Architecture Fit | Perfect | Custom |
+| Label Propagation | Automatic | Manual |
+| Caching | Built-in | Custom |
+| M2E/Buildship Support | ✅ Complete | Requires implementation |
+| **Recommendation** | **✅ Use for LSP4Jakarta/LSP4MP** | Use for special cases |
+
 ## Resources
 
 - [DependencyAnalysisHelper API](../ee-dependency-scanner-core/src/main/java/io/openliberty/tools/scanner/util/DependencyAnalysisHelper.java)
@@ -250,3 +366,5 @@ IClasspathEntry[] entries = javaProject.getResolvedClasspath(true);
 - [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
 - [Jakarta EE](https://jakarta.ee/)
 - [MicroProfile](https://microprofile.io/)
+- [LSP4Jakarta GitHub](https://github.com/eclipse/lsp4jakarta)
+- [LSP4MP GitHub](https://github.com/eclipse/lsp4mp)
