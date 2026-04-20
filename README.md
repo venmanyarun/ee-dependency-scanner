@@ -431,13 +431,8 @@ Contributions are welcome! Please follow these guidelines:
 
 ## License
 
-This project is part of the Open Liberty project and follows the same licensing terms.
-
 ## Support
 
-For issues, questions, or contributions:
-- GitHub Issues: [Report an issue](https://github.com/OpenLiberty/ee-dependency-scanner/issues)
-- Open Liberty Community: [Join the discussion](https://openliberty.io/community/)
 
 ## Changelog
 
