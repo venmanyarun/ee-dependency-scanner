@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id 'war'
+}
+
+group = 'io.openliberty.test'
+version = '1.0.0-SNAPSHOT'
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // MicroProfile 5.0 dependencies
+    providedCompile 'org.eclipse.microprofile:microprofile:5.0'
+    providedCompile 'org.eclipse.microprofile.config:microprofile-config-api:3.0'
+    providedCompile 'org.eclipse.microprofile.rest.client:microprofile-rest-client-api:3.0'
+    providedCompile 'org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api:4.0'
+    providedCompile 'org.eclipse.microprofile.health:microprofile-health-api:4.0'
+    providedCompile 'org.eclipse.microprofile.metrics:microprofile-metrics-api:4.0'
+    providedCompile 'org.eclipse.microprofile.openapi:microprofile-openapi-api:3.0'
+    
+    // Jakarta EE dependencies for MicroProfile
+    providedCompile 'jakarta.enterprise:jakarta.enterprise.cdi-api:3.0.0'
+    providedCompile 'jakarta.ws.rs:jakarta.ws.rs-api:3.0.0'
+    providedCompile 'jakarta.json:jakarta.json-api:2.0.0'
+    
+    testImplementation 'junit:junit:4.13.2'
+}
+

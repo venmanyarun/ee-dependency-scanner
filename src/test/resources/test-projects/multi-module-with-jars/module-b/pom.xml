@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example.test</groupId>
+        <artifactId>multi-module-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>module-b</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Module B - Data Layer</name>
+    <description>Module B with Jakarta EE Persistence and MicroProfile dependencies, plus custom JARs</description>
+
+    <dependencies>
+        <!-- Dependency on module-a -->
+        <dependency>
+            <groupId>com.example.test</groupId>
+            <artifactId>module-a</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Jakarta EE 10 - Persistence (has transitives) -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MicroProfile Config (has transitives) -->
+        <dependency>
+            <groupId>org.eclipse.microprofile.config</groupId>
+            <artifactId>microprofile-config-api</artifactId>
+            <version>3.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Custom JAR from lib directory -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>custom-library</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/../lib/custom-library-1.0.0.jar</systemPath>
+        </dependency>
+    </dependencies>
+</project>

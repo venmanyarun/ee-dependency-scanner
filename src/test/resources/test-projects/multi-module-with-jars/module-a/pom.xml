@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example.test</groupId>
+        <artifactId>multi-module-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>module-a</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Module A - Web Layer</name>
+    <description>Module A with Jakarta EE Servlet and CDI dependencies</description>
+
+    <dependencies>
+        <!-- Jakarta EE 10 - Servlet (has transitives) -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Jakarta EE 10 - CDI (has transitives) -->
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+            <version>4.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
