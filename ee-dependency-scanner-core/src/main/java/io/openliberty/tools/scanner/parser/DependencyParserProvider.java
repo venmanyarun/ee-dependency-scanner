@@ -11,7 +11,7 @@ public interface DependencyParserProvider {
      * Returns parsers provided by this provider.
      * @return list of dependency parsers
      */
-    List<DependencyParser> getParsers();
+    List<CoreDependencyParser<?>> getParsers();
     
     /**
      * Gets provider priority (lower = higher priority).

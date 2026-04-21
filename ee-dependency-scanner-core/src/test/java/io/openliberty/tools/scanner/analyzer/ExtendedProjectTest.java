@@ -1,7 +1,7 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +34,7 @@ class ExtendedProjectTest {
             return;
         }
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify Jakarta EE 9 dependencies detected
         assertFalse(result.getJakartaEEDependencies().isEmpty(),
@@ -64,7 +64,7 @@ class ExtendedProjectTest {
             return;
         }
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Note: GradleBuildParser currently only detects Gradle projects but doesn't parse dependencies
         // This test verifies the project is detected as Gradle
@@ -87,7 +87,7 @@ class ExtendedProjectTest {
             return;
         }
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify deduplication works
         List<DependencyInfo> allDeps = result.getAllDependencies();
@@ -129,7 +129,7 @@ class ExtendedProjectTest {
             return;
         }
         
-        ClasspathAnalysisResult result = analyzer.analyze(mavenProject);
+        DependencyAnalysisResult result = analyzer.analyze(mavenProject);
         
         // All dependencies should come from Maven (highest priority)
         List<DependencyInfo> deps = result.getAllDependencies();
@@ -148,7 +148,7 @@ class ExtendedProjectTest {
             return;
         }
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Check if version conflicts are detected
         var featureVersions = result.getJakartaEEFeatureVersions();
@@ -167,7 +167,7 @@ class ExtendedProjectTest {
         File tempDir = new File(System.getProperty("java.io.tmpdir"), "empty-test-project");
         tempDir.mkdirs();
         
-        ClasspathAnalysisResult result = analyzer.analyze(tempDir);
+        DependencyAnalysisResult result = analyzer.analyze(tempDir);
         
         // Should handle gracefully
         assertNotNull(result, "Should return result even for empty project");

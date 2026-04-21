@@ -1,7 +1,7 @@
 package io.openliberty.tools.scanner.util;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;

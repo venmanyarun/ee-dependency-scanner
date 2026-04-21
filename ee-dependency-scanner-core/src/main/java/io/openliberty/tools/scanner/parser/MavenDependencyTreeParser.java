@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.api.DependencySource;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,7 +16,7 @@ import java.util.regex.Pattern;
  * Parser for Maven dependency tree output.
  * Executes 'mvn dependency:tree' and parses the output to extract all dependencies including transitives.
  */
-public class MavenDependencyTreeParser implements DependencyParser {
+public class MavenDependencyTreeParser implements CoreDependencyParser<File> {
     
     private static final String POM_XML = "pom.xml";
     
@@ -57,9 +58,10 @@ public class MavenDependencyTreeParser implements DependencyParser {
     }
     
     @Override
-    public String getParserName() {
+    public String getName() {
         return "Maven Dependency Tree";
     }
+
     
     /**
      * Finds pom.xml file in the given path.

@@ -1,10 +1,10 @@
 package io.openliberty.tools.scanner;
 
 import io.openliberty.tools.scanner.analyzer.ClasspathAnalyzer;
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
-import io.openliberty.tools.scanner.model.DependencyType;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -118,7 +118,7 @@ public class MultiModuleProjectTest {
 
     @Test
     void testModuleAAnalysis() {
-        ClasspathAnalysisResult result = analyzer.analyze(moduleARoot.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(moduleARoot.toFile());
         
         // Verify Maven detection
         assertTrue(result.getDetectionMethod().contains("Maven"), 
@@ -135,7 +135,7 @@ public class MultiModuleProjectTest {
 
     @Test
     void testModuleBAnalysis() {
-        ClasspathAnalysisResult result = analyzer.analyze(moduleBRoot.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(moduleBRoot.toFile());
         
         // Verify Maven detection
         assertTrue(result.getDetectionMethod().contains("Maven"), 
@@ -152,7 +152,7 @@ public class MultiModuleProjectTest {
 
     @Test
     void testParentPomAnalysis() {
-        ClasspathAnalysisResult result = analyzer.analyze(testProjectRoot.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(testProjectRoot.toFile());
         
         // Verify Maven detection
         assertTrue(result.getDetectionMethod().contains("Maven"), 
@@ -165,7 +165,7 @@ public class MultiModuleProjectTest {
     @Test
     void testCustomJarWithTransitiveDependencies() {
         // Analyze the lib directory containing custom JAR
-        ClasspathAnalysisResult result = analyzer.analyze(libDir.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(libDir.toFile());
         
         // Verify JAR scanning
         assertTrue(result.getDetectionMethod().contains("JAR") || 
@@ -183,8 +183,8 @@ public class MultiModuleProjectTest {
 
     @Test
     void testMultiModuleVersionConsistency() {
-        ClasspathAnalysisResult resultA = analyzer.analyze(moduleARoot.toFile());
-        ClasspathAnalysisResult resultB = analyzer.analyze(moduleBRoot.toFile());
+        DependencyAnalysisResult resultA = analyzer.analyze(moduleARoot.toFile());
+        DependencyAnalysisResult resultB = analyzer.analyze(moduleBRoot.toFile());
         
         // Get Jakarta EE versions from both modules
         Set<String> versionsA = resultA.getJakartaEEPlatformVersions();
@@ -197,7 +197,7 @@ public class MultiModuleProjectTest {
 
     @Test
     void testDependencySourceTracking() {
-        ClasspathAnalysisResult result = analyzer.analyze(moduleARoot.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(moduleARoot.toFile());
         
         // Verify all dependencies have a source
         for (DependencyInfo dep : result.getAllDependencies()) {
@@ -210,7 +210,7 @@ public class MultiModuleProjectTest {
 
     @Test
     void testMultiModuleSummary() {
-        ClasspathAnalysisResult result = analyzer.analyze(testProjectRoot.toFile());
+        DependencyAnalysisResult result = analyzer.analyze(testProjectRoot.toFile());
         String summary = result.getSummary();
         
         // Verify summary contains key information

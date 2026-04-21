@@ -53,7 +53,7 @@ class ParserPriorityTest {
     @Test
     void testParserSorting() {
         // Create parsers in reverse priority order
-        List<DependencyParser> parsers = Arrays.asList(
+        List<CoreDependencyParser<?>> parsers = Arrays.asList(
             new JarManifestScanner(),      // priority 200
             new EclipseClasspathParser(),  // priority 100
             new GradleBuildParser(),       // priority 20
@@ -61,7 +61,7 @@ class ParserPriorityTest {
         );
         
         // Sort by priority
-        parsers.sort(DependencyParser::compareTo);
+        parsers.sort(CoreDependencyParser::compareTo);
         
         // Verify correct order
         assertTrue(parsers.get(0) instanceof MavenPomParser,
@@ -81,9 +81,9 @@ class ParserPriorityTest {
         EclipseClasspathParser eclipseParser = new EclipseClasspathParser();
         JarManifestScanner jarScanner = new JarManifestScanner();
         
-        assertEquals("Maven", mavenParser.getParserName());
-        assertEquals("Gradle", gradleParser.getParserName());
-        assertEquals("Eclipse", eclipseParser.getParserName());
-        assertEquals("JAR Scanner", jarScanner.getParserName());
+        assertEquals("Maven", mavenParser.getName());
+        assertEquals("Gradle", gradleParser.getName());
+        assertEquals("Eclipse", eclipseParser.getName());
+        assertEquals("JAR Scanner", jarScanner.getName());
     }
 }

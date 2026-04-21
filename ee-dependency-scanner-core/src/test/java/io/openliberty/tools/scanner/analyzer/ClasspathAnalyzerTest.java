@@ -1,7 +1,7 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +33,7 @@ class ClasspathAnalyzerTest {
     void testMavenJakartaEE10Project() {
         File projectDir = getTestProject("maven-jakarta-ee10");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify detection method
         assertTrue(result.getDetectionMethod().contains("Maven"), 
@@ -65,7 +65,7 @@ class ClasspathAnalyzerTest {
     void testMavenMixedVersionsProject() {
         File projectDir = getTestProject("maven-mixed-versions");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify Jakarta EE dependencies found
         assertEquals(3, result.getJakartaEEDependencies().size(), 
@@ -97,7 +97,7 @@ class ClasspathAnalyzerTest {
     void testMavenWithClasspathMixedSources() {
         File projectDir = getTestProject("maven-with-classpath");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify multiple detection methods
         String detectionMethod = result.getDetectionMethod();
@@ -137,7 +137,7 @@ class ClasspathAnalyzerTest {
     void testGradleJakartaEE10Project() {
         File projectDir = getTestProject("gradle-jakarta-ee10");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify detection method (Gradle parser may not be fully implemented, so check for any detection)
         assertNotNull(result.getDetectionMethod(),
@@ -159,7 +159,7 @@ class ClasspathAnalyzerTest {
     void testSingleFeatureCDIDetection() {
         File projectDir = getTestProject("single-feature-cdi");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify only one Jakarta EE dependency
         assertEquals(1, result.getJakartaEEDependencies().size(), 
@@ -212,7 +212,7 @@ class ClasspathAnalyzerTest {
     void testAnalysisSummary() {
         File projectDir = getTestProject("maven-jakarta-ee10");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         String summary = result.getSummary();
         
         // Verify summary contains key information
@@ -231,7 +231,7 @@ class ClasspathAnalyzerTest {
         // This test uses maven-with-classpath which might have overlapping dependencies
         File projectDir = getTestProject("maven-with-classpath");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Count unique coordinates
         long uniqueCoordinates = result.getAllDependencies().stream()
@@ -248,7 +248,7 @@ class ClasspathAnalyzerTest {
     void testFeatureVersionDetails() {
         File projectDir = getTestProject("maven-mixed-versions");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Get feature-level version details
         var jakartaFeatures = result.getJakartaEEFeatureVersions();
@@ -272,7 +272,7 @@ class ClasspathAnalyzerTest {
     void testMavenJavaEE6Project() {
         File projectDir = getTestProject("maven-javaee6");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify detection method
         assertTrue(result.getDetectionMethod().contains("Maven"),
@@ -297,7 +297,7 @@ class ClasspathAnalyzerTest {
     void testMavenJavaEE7Project() {
         File projectDir = getTestProject("maven-javaee7");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify detection method
         assertTrue(result.getDetectionMethod().contains("Maven"),
@@ -317,7 +317,7 @@ class ClasspathAnalyzerTest {
     void testMavenJavaEE8Project() {
         File projectDir = getTestProject("maven-javaee8");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify detection method
         assertTrue(result.getDetectionMethod().contains("Maven"),

@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
@@ -14,12 +15,11 @@ import java.util.regex.Pattern;
 /**
  * Parser for Eclipse .classpath files with M2_REPO resolution.
  */
-public class EclipseClasspathParser implements DependencyParser {
+public class EclipseClasspathParser implements CoreDependencyParser<File> {
     
     private static final String CLASSPATH_FILE = ".classpath";
     private static final String M2_REPO = "M2_REPO";
     
-    @Override
     public int getPriority() {
         return 100;
     }
@@ -76,9 +76,10 @@ public class EclipseClasspathParser implements DependencyParser {
     }
     
     @Override
-    public String getParserName() {
+    public String getName() {
         return "Eclipse";
     }
+
     
     private File findClasspathFile(File path) {
         if (path.isFile() && path.getName().equals(CLASSPATH_FILE)) {

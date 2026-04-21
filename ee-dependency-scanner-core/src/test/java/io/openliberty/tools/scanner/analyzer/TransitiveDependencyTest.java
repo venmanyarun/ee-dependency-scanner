@@ -1,8 +1,8 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
 import io.openliberty.tools.scanner.parser.JarManifestScanner;
 import io.openliberty.tools.scanner.util.JarDependencyExtractor;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,7 @@ class TransitiveDependencyTest {
     void testProjectWithTransitiveJarDependencies() {
         File projectDir = getTestProject("project-with-transitive-jar");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         
         // Verify some detection method was used (could be Maven pom.xml or JAR scanning)
         assertNotNull(result.getDetectionMethod(),
@@ -163,11 +163,11 @@ class TransitiveDependencyTest {
         JarManifestScanner scanner = new JarManifestScanner();
         scanner.setExtractTransitiveDependencies(false);
         
-        List<io.openliberty.tools.scanner.parser.DependencyParser> parsers = 
+        List<io.openliberty.tools.scanner.api.DependencyParser<?>> parsers =
             java.util.Arrays.asList(scanner);
         
         ClasspathAnalyzer customAnalyzer = new ClasspathAnalyzer(parsers);
-        ClasspathAnalysisResult result = customAnalyzer.analyze(projectDir);
+        DependencyAnalysisResult result = customAnalyzer.analyze(projectDir);
         
         // Should only find the JAR itself, not transitive dependencies
         // (or very few dependencies compared to when transitive extraction is enabled)
@@ -175,7 +175,7 @@ class TransitiveDependencyTest {
         
         // Now enable transitive extraction
         scanner.setExtractTransitiveDependencies(true);
-        ClasspathAnalysisResult resultWithTransitive = customAnalyzer.analyze(projectDir);
+        DependencyAnalysisResult resultWithTransitive = customAnalyzer.analyze(projectDir);
         
         int depCountWithTransitive = resultWithTransitive.getAllDependencies().size();
         
@@ -188,7 +188,7 @@ class TransitiveDependencyTest {
     void testTransitiveDependenciesInSummary() {
         File projectDir = getTestProject("project-with-transitive-jar");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         String summary = result.getSummary();
         
         // Verify summary includes information about found dependencies

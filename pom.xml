@@ -13,9 +13,8 @@
     <description>Unified dependency detection solution for Jakarta EE, Java EE, and MicroProfile across Liberty and Jakarta EE tooling projects</description>
 
     <modules>
+        <module>ee-dependency-scanner-api</module>
         <module>ee-dependency-scanner-core</module>
-        <module>scanner-intellij-adapter</module>
-        <module>scanner-eclipse-adapter</module>
     </modules>
 
     <properties>

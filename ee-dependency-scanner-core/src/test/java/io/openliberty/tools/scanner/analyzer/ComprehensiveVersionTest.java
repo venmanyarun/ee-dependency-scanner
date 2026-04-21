@@ -1,8 +1,8 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +28,7 @@ class ComprehensiveVersionTest {
     @Test
     void testMavenJavaEE5Project() {
         File projectDir = getTestProject("maven-javaee5");
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
 
         assertNotNull(result);
         assertFalse(result.getAllDependencies().isEmpty());
@@ -44,7 +44,7 @@ class ComprehensiveVersionTest {
         File projectDir = getTestProject("gradle-jakarta-ee9.1");
         assertTrue(projectDir.exists(), "Gradle Jakarta EE 9.1 project should exist");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         assertNotNull(result);
         
         if (!result.getAllDependencies().isEmpty()) {
@@ -55,7 +55,7 @@ class ComprehensiveVersionTest {
     @Test
     void testMavenMixedJavaEEVersions() {
         File projectDir = getTestProject("maven-mixed-javaee");
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
 
         assertNotNull(result);
         assertFalse(result.getAllDependencies().isEmpty());
@@ -72,7 +72,7 @@ class ComprehensiveVersionTest {
         File projectDir = getTestProject("gradle-microprofile-4.0");
         assertTrue(projectDir.exists(), "Gradle MicroProfile 4.0 project should exist");
         
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
         assertNotNull(result);
         
         if (!result.getAllDependencies().isEmpty()) {
@@ -83,7 +83,7 @@ class ComprehensiveVersionTest {
     @Test
     void testCustomJarWithEmbeddedJakartaEE() {
         File projectDir = getTestProject("custom-jar-with-jakarta");
-        ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+        DependencyAnalysisResult result = analyzer.analyze(projectDir);
 
         assertNotNull(result);
         assertFalse(result.getAllDependencies().isEmpty(), "Should detect dependencies");
@@ -102,7 +102,7 @@ class ComprehensiveVersionTest {
                 ", JAR_SCAN: " + jarScanCount + ", MAVEN: " + mavenCount);
     }
 
-    private void verifyJakartaEE91Dependencies(ClasspathAnalysisResult result) {
+    private void verifyJakartaEE91Dependencies(DependencyAnalysisResult result) {
         List<DependencyInfo> jakartaDeps = result.getAllDependencies().stream()
                 .filter(d -> d.getGroupId().startsWith("jakarta."))
                 .collect(Collectors.toList());
@@ -116,7 +116,7 @@ class ComprehensiveVersionTest {
         }
     }
 
-    private void verifyMicroProfile40Dependencies(ClasspathAnalysisResult result) {
+    private void verifyMicroProfile40Dependencies(DependencyAnalysisResult result) {
         List<DependencyInfo> mpDeps = result.getAllDependencies().stream()
                 .filter(d -> d.getGroupId().contains("microprofile"))
                 .collect(Collectors.toList());
@@ -159,7 +159,7 @@ class ComprehensiveVersionTest {
         for (String projectName : projectNames) {
             File project = getTestProject(projectName);
             if (project.exists()) {
-                ClasspathAnalysisResult result = analyzer.analyze(project);
+                DependencyAnalysisResult result = analyzer.analyze(project);
                 if (result != null && !result.getAllDependencies().isEmpty()) {
                     successfulAnalyses++;
                     System.out.println("Analyzed " + projectName +

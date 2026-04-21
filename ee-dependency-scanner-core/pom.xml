@@ -14,9 +14,15 @@
     <packaging>jar</packaging>
 
     <name>EE Dependency Scanner Core</name>
-    <description>Core dependency scanner library with headless parsers and analysis APIs</description>
+    <description>Core utilities for dependency analysis (version detection, JAR analysis, deduplication)</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.openliberty.tools</groupId>
+            <artifactId>ee-dependency-scanner-api</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>

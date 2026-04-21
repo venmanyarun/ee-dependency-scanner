@@ -1,8 +1,8 @@
 package io.openliberty.tools.scanner.util;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
-import io.openliberty.tools.scanner.model.DependencyType;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyType;
 
 import java.io.File;
 import java.util.*;

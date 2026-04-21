@@ -1,10 +1,10 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
-import io.openliberty.tools.scanner.parser.DependencyParser;
-import io.openliberty.tools.scanner.parser.ParserException;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.parser.CoreDependencyParser;
 import io.openliberty.tools.scanner.parser.ParserTier;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +22,7 @@ class ParserTierExecutionTest {
 
     @Test
     void testIdeTierShortCircuitsBuildFileTier() {
-        DependencyParser ideParser = new StubTierParser(
+        CoreDependencyParser<File> ideParser = new StubTierParser(
             "IntelliJ Project Model",
             ParserTier.IDE_MODEL,
             5,
@@ -30,7 +30,7 @@ class ParserTierExecutionTest {
             Collections.singletonList(dependency("jakarta.platform", "jakarta.jakartaee-api", "10.0.0", DependencySource.INTELLIJ))
         );
 
-        DependencyParser mavenParser = new StubTierParser(
+        CoreDependencyParser<File> mavenParser = new StubTierParser(
             "Maven",
             ParserTier.BUILD_FILE,
             10,
@@ -39,7 +39,7 @@ class ParserTierExecutionTest {
         );
 
         ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(mavenParser, ideParser));
-        ClasspathAnalysisResult result = analyzer.analyze(new File("."));
+        DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());
         assertEquals(DependencySource.INTELLIJ, result.getAllDependencies().get(0).getSource());
@@ -48,7 +48,7 @@ class ParserTierExecutionTest {
 
     @Test
     void testBuildToolResolvedTierShortCircuitsBuildFileTier() {
-        DependencyParser resolvedParser = new StubTierParser(
+        CoreDependencyParser<File> resolvedParser = new StubTierParser(
             "Maven Dependency Tree",
             ParserTier.BUILD_TOOL_RESOLVED,
             5,
@@ -56,7 +56,7 @@ class ParserTierExecutionTest {
             Collections.singletonList(dependency("jakarta.platform", "jakarta.jakartaee-api", "10.0.0", DependencySource.MAVEN))
         );
 
-        DependencyParser gradleParser = new StubTierParser(
+        CoreDependencyParser<File> gradleParser = new StubTierParser(
             "Gradle",
             ParserTier.BUILD_FILE,
             20,
@@ -65,7 +65,7 @@ class ParserTierExecutionTest {
         );
 
         ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(gradleParser, resolvedParser));
-        ClasspathAnalysisResult result = analyzer.analyze(new File("."));
+        DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());
         assertEquals(DependencySource.MAVEN, result.getAllDependencies().get(0).getSource());
@@ -74,7 +74,7 @@ class ParserTierExecutionTest {
 
     @Test
     void testFallsBackToBuildFileTierWhenHigherTiersEmpty() {
-        DependencyParser ideParser = new StubTierParser(
+        CoreDependencyParser<File> ideParser = new StubTierParser(
             "IntelliJ Project Model",
             ParserTier.IDE_MODEL,
             5,
@@ -82,7 +82,7 @@ class ParserTierExecutionTest {
             Collections.emptyList()
         );
 
-        DependencyParser mavenParser = new StubTierParser(
+        CoreDependencyParser<File> mavenParser = new StubTierParser(
             "Maven",
             ParserTier.BUILD_FILE,
             10,
@@ -91,7 +91,7 @@ class ParserTierExecutionTest {
         );
 
         ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(mavenParser, ideParser));
-        ClasspathAnalysisResult result = analyzer.analyze(new File("."));
+        DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());
         assertEquals(DependencySource.MAVEN, result.getAllDependencies().get(0).getSource());
@@ -107,7 +107,7 @@ class ParserTierExecutionTest {
             .build();
     }
 
-    private static final class StubTierParser implements DependencyParser {
+    private static final class StubTierParser implements CoreDependencyParser<File> {
         private final String name;
         private final ParserTier tier;
         private final int priority;
@@ -134,11 +134,12 @@ class ParserTierExecutionTest {
         }
 
         @Override
-        public String getParserName() {
+        public String getName() {
             return name;
         }
 
         @Override
+
         public ParserTier getTier() {
             return tier;
         }

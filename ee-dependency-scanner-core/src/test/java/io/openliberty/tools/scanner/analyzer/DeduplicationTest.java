@@ -1,8 +1,8 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -162,7 +162,7 @@ class DeduplicationTest {
         File projectDir = new File("src/test/resources/test-projects/maven-jakarta-ee10");
         
         if (projectDir.exists()) {
-            ClasspathAnalysisResult result = analyzer.analyze(projectDir);
+            DependencyAnalysisResult result = analyzer.analyze(projectDir);
             
             // Check that there are no duplicate groupId:artifactId combinations
             List<DependencyInfo> deps = result.getAllDependencies();

@@ -1,6 +1,6 @@
 package io.openliberty.tools.scanner.util;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencyInfo;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;

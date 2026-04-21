@@ -1,19 +1,24 @@
-package io.openliberty.tools.scanner.util;
+package io.openliberty.tools.scanner.core;
 
 import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.util.VersionMappingRegistry;
 
 import java.util.*;
 
 /**
- * Detects Jakarta EE and MicroProfile platform versions from dependencies.
+ * Reusable utility for detecting Jakarta EE and MicroProfile platform versions from dependencies.
+ * This is a standalone utility that can be used by any parser implementation.
  */
 public class VersionDetector {
     
-    private static final VersionMappingRegistry REGISTRY;
+    private final VersionMappingRegistry registry;
     
-    static {
-        REGISTRY = VersionMappingRegistry.loadFromClasspath();
-        if (!REGISTRY.isValid()) {
+    /**
+     * Creates a new VersionDetector with default registry loaded from classpath.
+     */
+    public VersionDetector() {
+        this.registry = VersionMappingRegistry.loadFromClasspath();
+        if (!registry.isValid()) {
             System.err.println("Warning: Version mapping registry is not valid. " +
                              "Ensure jakarta-ee-versions.properties and microprofile-versions.properties " +
                              "are present in classpath.");
@@ -21,17 +26,25 @@ public class VersionDetector {
     }
     
     /**
+     * Creates a new VersionDetector with a custom registry.
+     * @param registry custom version mapping registry
+     */
+    public VersionDetector(VersionMappingRegistry registry) {
+        this.registry = registry;
+    }
+    
+    /**
      * Detects Jakarta EE platform versions from dependencies.
      * @param dependencies list of dependencies to analyze
      * @return set of detected platform versions
      */
-    public static Set<String> detectJakartaEEVersion(List<DependencyInfo> dependencies) {
+    public Set<String> detectJakartaEEVersion(List<DependencyInfo> dependencies) {
         Set<String> versions = new HashSet<>();
         
         for (DependencyInfo dep : dependencies) {
             if (!dep.isJakartaEE() && !dep.isJavaEE()) continue;
             
-            String platformVersion = REGISTRY.getJakartaEEPlatformVersion(
+            String platformVersion = registry.getJakartaEEPlatformVersion(
                 dep.getArtifactId(),
                 dep.getVersion()
             );
@@ -54,13 +67,13 @@ public class VersionDetector {
      * @param dependencies list of dependencies to analyze
      * @return set of detected platform versions
      */
-    public static Set<String> detectMicroProfileVersion(List<DependencyInfo> dependencies) {
+    public Set<String> detectMicroProfileVersion(List<DependencyInfo> dependencies) {
         Set<String> versions = new HashSet<>();
         
         for (DependencyInfo dep : dependencies) {
             if (!dep.isMicroProfile()) continue;
             
-            String platformVersion = REGISTRY.getMicroProfilePlatformVersion(
+            String platformVersion = registry.getMicroProfilePlatformVersion(
                 dep.getArtifactId(),
                 dep.getVersion()
             );
@@ -73,7 +86,7 @@ public class VersionDetector {
         return versions;
     }
     
-    private static String inferJakartaEEVersion(DependencyInfo dep) {
+    private String inferJakartaEEVersion(DependencyInfo dep) {
         String version = dep.getVersion();
         if (version == null) return null;
         
@@ -137,8 +150,7 @@ public class VersionDetector {
         return null;
     }
     
-    
-    private static String extractFeatureName(String artifactId) {
+    private String extractFeatureName(String artifactId) {
         if (artifactId == null) {
             return null;
         }
@@ -159,7 +171,7 @@ public class VersionDetector {
      * @param dependencies list of dependencies to analyze
      * @return map of feature names to versions
      */
-    public static Map<String, Set<String>> getJakartaEEFeatureVersions(List<DependencyInfo> dependencies) {
+    public Map<String, Set<String>> getJakartaEEFeatureVersions(List<DependencyInfo> dependencies) {
         Map<String, Set<String>> featureVersions = new HashMap<>();
         
         for (DependencyInfo dep : dependencies) {
@@ -183,7 +195,7 @@ public class VersionDetector {
      * @param dependencies list of dependencies to analyze
      * @return map of feature names to versions
      */
-    public static Map<String, Set<String>> getMicroProfileFeatureVersions(List<DependencyInfo> dependencies) {
+    public Map<String, Set<String>> getMicroProfileFeatureVersions(List<DependencyInfo> dependencies) {
         Map<String, Set<String>> featureVersions = new HashMap<>();
         
         for (DependencyInfo dep : dependencies) {
@@ -207,9 +219,10 @@ public class VersionDetector {
      * @param featureVersions map of features to versions
      * @return true if conflicts exist
      */
-    public static boolean hasVersionConflicts(Map<String, Set<String>> featureVersions) {
+    public boolean hasVersionConflicts(Map<String, Set<String>> featureVersions) {
         return featureVersions.values().stream()
             .anyMatch(versions -> versions.size() > 1);
     }
 }
+
 

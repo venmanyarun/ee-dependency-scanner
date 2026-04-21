@@ -1,8 +1,11 @@
 package io.openliberty.tools.scanner.analyzer;
 
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencyParser;
+import io.openliberty.tools.scanner.api.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyFilter;
+import io.openliberty.tools.scanner.api.ParserException;
 import io.openliberty.tools.scanner.parser.*;
 
 import java.io.File;
@@ -13,9 +16,8 @@ import java.util.*;
  */
 public class ClasspathAnalyzer {
     
-    private final List<DependencyParser> parsers;
+    private final List<CoreDependencyParser<?>> parsers;
     private boolean enableFallbackScanning = true;
-    private boolean preferIdeProjectModel = true;
     
     /**
      * Creates analyzer with default parsers loaded via ServiceLoader.
@@ -33,8 +35,13 @@ public class ClasspathAnalyzer {
     /**
      * Creates analyzer with custom parsers.
      */
-    public ClasspathAnalyzer(List<DependencyParser> parsers) {
-        this.parsers = new ArrayList<>(parsers);
+    public ClasspathAnalyzer(List<? extends DependencyParser<?>> parsers) {
+        this.parsers = new ArrayList<>();
+        for (DependencyParser<?> parser : parsers) {
+            if (parser instanceof CoreDependencyParser) {
+                this.parsers.add((CoreDependencyParser<?>) parser);
+            }
+        }
         Collections.sort(this.parsers);
     }
     
@@ -46,7 +53,7 @@ public class ClasspathAnalyzer {
             providers.sort(Comparator.comparingInt(DependencyParserProvider::getPriority));
             
             for (DependencyParserProvider provider : providers) {
-                List<DependencyParser> extensionParsers = provider.getParsers();
+                List<CoreDependencyParser<?>> extensionParsers = provider.getParsers();
                 if (extensionParsers != null) {
                     this.parsers.addAll(extensionParsers);
                 }
@@ -63,19 +70,13 @@ public class ClasspathAnalyzer {
         this.enableFallbackScanning = enable;
     }
     
-    /**
-     * Enables/disables preference for IDE-backed parsers when available.
-     */
-    public void setPreferIdeProjectModel(boolean preferIdeProjectModel) {
-        this.preferIdeProjectModel = preferIdeProjectModel;
-    }
     
     /**
      * Analyzes project for dependencies.
      * @param projectPath project directory or build file
      * @return analysis result with detected dependencies
      */
-    public ClasspathAnalysisResult analyze(String projectPath) {
+    public DependencyAnalysisResult analyze(String projectPath) {
         return analyze(new File(projectPath));
     }
     
@@ -84,11 +85,28 @@ public class ClasspathAnalyzer {
      * @param projectPath project directory or build file
      * @return analysis result with detected dependencies
      */
-    public ClasspathAnalysisResult analyze(File projectPath) {
+    public DependencyAnalysisResult analyze(File projectPath) {
+        return analyze(projectPath, DependencyFilter.includeAll());
+    }
+    
+    /**
+     * Analyzes project for dependencies with filtering.
+     * This is the preferred method for targeted dependency analysis.
+     * 
+     * @param project the project to analyze (File, Module, IJavaProject, etc.)
+     * @param filter filter to select specific dependencies
+     * @return analysis result with detected dependencies
+     */
+    public <T> DependencyAnalysisResult analyze(T project, DependencyFilter filter) {
         long startTime = System.currentTimeMillis();
         
-        if (!projectPath.exists()) {
-            throw new IllegalArgumentException("Path does not exist: " + projectPath);
+        // For File-based projects, check existence
+        File projectPath = null;
+        if (project instanceof File) {
+            projectPath = (File) project;
+            if (!projectPath.exists()) {
+                throw new IllegalArgumentException("Path does not exist: " + projectPath);
+            }
         }
         
         List<DependencyInfo> allDependencies = new ArrayList<>();
@@ -100,19 +118,19 @@ public class ClasspathAnalyzer {
             Set<String> tierDetectionMethods = new LinkedHashSet<>();
             int tierJarsScanned = 0;
             
-            for (DependencyParser parser : getParsersForTier(tier, projectPath)) {
-                if (parser.canParse(projectPath)) {
+            for (CoreDependencyParser<?> parser : getParsersForTier(tier, project)) {
+                if (canParseProject(parser, project)) {
                     try {
-                        List<DependencyInfo> dependencies = parser.parse(projectPath);
+                        List<DependencyInfo> dependencies = parseProject(parser, project, filter);
                         if (!dependencies.isEmpty()) {
                             tierDependencies.addAll(dependencies);
-                            tierDetectionMethods.add(parser.getParserName());
+                            tierDetectionMethods.add(parser.getName());
                             if (parser instanceof JarManifestScanner) {
                                 tierJarsScanned = dependencies.size();
                             }
                         }
                     } catch (ParserException e) {
-                        System.err.println("Warning: " + parser.getParserName() + " failed: " + e.getMessage());
+                        System.err.println("Warning: " + parser.getName() + " failed: " + e.getMessage());
                     }
                 }
             }
@@ -128,7 +146,8 @@ public class ClasspathAnalyzer {
             }
         }
         
-        if (allDependencies.isEmpty() && enableFallbackScanning && projectPath.isDirectory()) {
+        // Fallback scanning only for File-based projects
+        if (allDependencies.isEmpty() && enableFallbackScanning && projectPath != null && projectPath.isDirectory()) {
             try {
                 JarManifestScanner fallbackScanner = new JarManifestScanner();
                 List<DependencyInfo> jarDeps = scanRecursively(projectPath, fallbackScanner);
@@ -145,52 +164,46 @@ public class ClasspathAnalyzer {
         allDependencies = removeDuplicates(allDependencies);
         long endTime = System.currentTimeMillis();
         
-        return ClasspathAnalysisResult.builder()
+        return DependencyAnalysisResult.builder()
             .addDependencies(allDependencies)
-            .totalJarsScanned(jarsScanned)
             .analysisTimeMs(endTime - startTime)
             .detectionMethod(String.join(", ", detectionMethods))
             .build();
     }
     
-    private List<DependencyParser> getParsersForTier(ParserTier tier, File projectPath) {
-        List<DependencyParser> tierParsers = new ArrayList<>();
-        boolean ideProjectModelAvailable = preferIdeProjectModel && hasParserForTier(ParserTier.IDE_MODEL, projectPath);
-        
-        for (DependencyParser parser : parsers) {
-            if (parser.getTier() != tier) {
-                continue;
-            }
-            
-            if (shouldSkipParserForTier(parser, tier, ideProjectModelAvailable)) {
-                continue;
-            }
-            
-            tierParsers.add(parser);
-        }
-        
-        tierParsers.sort(DependencyParser::compareTo);
-        return tierParsers;
-    }
-    
-    private boolean hasParserForTier(ParserTier tier, File projectPath) {
-        for (DependencyParser parser : parsers) {
-            if (parser.getTier() == tier && parser.canParse(projectPath)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    private boolean shouldSkipParserForTier(DependencyParser parser, ParserTier tier, boolean ideProjectModelAvailable) {
-        if (!ideProjectModelAvailable) {
+    /**
+     * Type-safe helper to check if a parser can parse a project.
+     */
+    @SuppressWarnings("unchecked")
+    private <T> boolean canParseProject(CoreDependencyParser<?> parser, T project) {
+        try {
+            DependencyParser<T> typedParser = (DependencyParser<T>) parser;
+            return typedParser.canParse(project);
+        } catch (ClassCastException e) {
             return false;
         }
+    }
+    
+    /**
+     * Type-safe helper to parse a project with a parser.
+     */
+    @SuppressWarnings("unchecked")
+    private <T> List<DependencyInfo> parseProject(CoreDependencyParser<?> parser, T project, DependencyFilter filter) throws ParserException {
+        DependencyParser<T> typedParser = (DependencyParser<T>) parser;
+        return typedParser.parse(project, filter);
+    }
+    
+    private <T> List<CoreDependencyParser<?>> getParsersForTier(ParserTier tier, T project) {
+        List<CoreDependencyParser<?>> tierParsers = new ArrayList<>();
         
-        return tier == ParserTier.BUILD_FILE &&
-               (parser instanceof MavenPomParser ||
-                parser instanceof GradleBuildParser ||
-                parser instanceof EclipseClasspathParser);
+        for (CoreDependencyParser<?> parser : parsers) {
+            if (parser.getTier() == tier) {
+                tierParsers.add(parser);
+            }
+        }
+        
+        tierParsers.sort(CoreDependencyParser::compareTo);
+        return tierParsers;
     }
     
     private List<DependencyInfo> scanRecursively(File directory, JarManifestScanner scanner) {
@@ -288,10 +301,11 @@ public class ClasspathAnalyzer {
      * @return true if EE dependencies found
      */
     public boolean hasEEDependencies(File projectPath) {
-        ClasspathAnalysisResult result = analyze(projectPath);
+        DependencyAnalysisResult result = analyze(projectPath);
         return !result.getJakartaEEDependencies().isEmpty() ||
                !result.getJavaEEDependencies().isEmpty() ||
                !result.getMicroProfileDependencies().isEmpty();
     }
 }
+
 

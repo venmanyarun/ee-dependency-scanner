@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.api.DependencySource;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
@@ -12,13 +13,18 @@ import java.util.*;
 /**
  * Parser for Maven pom.xml files with property resolution.
  */
-public class MavenPomParser implements DependencyParser {
+public class MavenPomParser implements CoreDependencyParser<File> {
     
     private static final String POM_XML = "pom.xml";
     
     @Override
     public int getPriority() {
         return 10;
+    }
+    
+    @Override
+    public ParserTier getTier() {
+        return ParserTier.BUILD_FILE;
     }
     
     @Override
@@ -75,9 +81,10 @@ public class MavenPomParser implements DependencyParser {
     }
     
     @Override
-    public String getParserName() {
+    public String getName() {
         return "Maven";
     }
+
     
     private File findPomFile(File path) {
         if (path.isFile() && path.getName().equals(POM_XML)) {

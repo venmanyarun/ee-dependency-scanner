@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.api.DependencySource;
 import io.openliberty.tools.scanner.util.JarDependencyExtractor;
 
 import java.io.File;
@@ -14,14 +15,13 @@ import java.util.jar.Attributes;
 /**
  * Scanner for JAR files with manifest and transitive dependency extraction.
  */
-public class JarManifestScanner implements DependencyParser {
+public class JarManifestScanner implements CoreDependencyParser<File> {
     
     private static final String[] JAR_EXTENSIONS = {".jar", ".war", ".ear"};
     private static final String[] LIBRARY_DIRS = {"lib", "libs", "target", "build"};
     
     private boolean extractTransitiveDependencies = true;
     
-    @Override
     public int getPriority() {
         return 200;
     }
@@ -67,9 +67,10 @@ public class JarManifestScanner implements DependencyParser {
     }
     
     @Override
-    public String getParserName() {
+    public String getName() {
         return "JAR Scanner";
     }
+
     
     private void scanDirectory(File directory, List<DependencyInfo> dependencies) {
         File[] files = directory.listFiles();

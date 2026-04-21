@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
 import io.openliberty.tools.scanner.analyzer.ClasspathAnalyzer;
-import io.openliberty.tools.scanner.model.DependencyInfo;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -20,7 +21,7 @@ class ParserProviderSPITest {
         // Create a test provider
         DependencyParserProvider testProvider = new DependencyParserProvider() {
             @Override
-            public List<DependencyParser> getParsers() {
+            public List<CoreDependencyParser<?>> getParsers() {
                 return Arrays.asList(new TestCustomParser());
             }
             
@@ -38,7 +39,7 @@ class ParserProviderSPITest {
     @Test
     void testCustomParserIntegration() {
         // Create analyzer with custom parser
-        List<DependencyParser> customParsers = Arrays.asList(
+        List<CoreDependencyParser<?>> customParsers = Arrays.asList(
             new MavenPomParser(),
             new TestCustomParser(),
             new JarManifestScanner()
@@ -52,12 +53,12 @@ class ParserProviderSPITest {
     void testParserProviderDefaultPriority() {
         DependencyParserProvider provider = new DependencyParserProvider() {
             @Override
-            public List<DependencyParser> getParsers() {
+            public List<CoreDependencyParser<?>> getParsers() {
                 return Arrays.asList(new TestCustomParser());
             }
         };
         
-        assertEquals(100, provider.getPriority(), 
+        assertEquals(100, provider.getPriority(),
             "Default priority should be 100");
     }
     
@@ -65,7 +66,7 @@ class ParserProviderSPITest {
     void testMultipleProvidersWithDifferentPriorities() {
         DependencyParserProvider highPriority = new DependencyParserProvider() {
             @Override
-            public List<DependencyParser> getParsers() {
+            public List<CoreDependencyParser<?>> getParsers() {
                 return Arrays.asList(new TestCustomParser());
             }
             
@@ -77,7 +78,7 @@ class ParserProviderSPITest {
         
         DependencyParserProvider lowPriority = new DependencyParserProvider() {
             @Override
-            public List<DependencyParser> getParsers() {
+            public List<CoreDependencyParser<?>> getParsers() {
                 return Arrays.asList(new TestCustomParser());
             }
             
@@ -94,7 +95,7 @@ class ParserProviderSPITest {
     /**
      * Test custom parser implementation for testing purposes.
      */
-    private static class TestCustomParser implements DependencyParser {
+    private static class TestCustomParser implements CoreDependencyParser<File> {
         
         @Override
         public List<DependencyInfo> parse(File path) throws ParserException {
@@ -102,13 +103,13 @@ class ParserProviderSPITest {
         }
         
         @Override
-        public boolean canParse(File path) {
-            return false; // Never matches in tests
+        public String getName() {
+            return "TestCustomParser";
         }
         
         @Override
-        public String getParserName() {
-            return "Test Custom Parser";
+        public boolean canParse(File path) {
+            return false; // Never matches in tests
         }
         
         @Override

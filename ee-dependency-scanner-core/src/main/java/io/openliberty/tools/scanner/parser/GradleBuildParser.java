@@ -1,7 +1,8 @@
 package io.openliberty.tools.scanner.parser;
 
-import io.openliberty.tools.scanner.model.DependencyInfo;
-import io.openliberty.tools.scanner.model.DependencySource;
+import io.openliberty.tools.scanner.api.DependencyInfo;
+import io.openliberty.tools.scanner.api.ParserException;
+import io.openliberty.tools.scanner.api.DependencySource;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,12 +15,11 @@ import java.util.regex.Pattern;
 /**
  * Parser for Gradle build files with variable resolution.
  */
-public class GradleBuildParser implements DependencyParser {
+public class GradleBuildParser implements CoreDependencyParser<File> {
     
     private static final String BUILD_GRADLE = "build.gradle";
     private static final String BUILD_GRADLE_KTS = "build.gradle.kts";
     
-    @Override
     public int getPriority() {
         return 20;
     }
@@ -94,9 +94,10 @@ public class GradleBuildParser implements DependencyParser {
     }
     
     @Override
-    public String getParserName() {
+    public String getName() {
         return "Gradle";
     }
+
     
     private File findBuildFile(File path) {
         if (path.isFile()) {
