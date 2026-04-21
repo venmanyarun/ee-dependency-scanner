@@ -30,7 +30,22 @@ Complete implementation for Eclipse using `DependencyParser<IJavaProject>`.
 - `EclipseJavaProjectParser.java` - Complete parser implementation
 - `README.md` - Usage guide and integration steps
 
-### 3. [VS Code Extension](vscode-extension/)
+### 3. [LSP4Jakarta Integration](lsp4jakarta-integration/)
+Complete replacement for LSP4Jakarta's JakartaVersionFinder using `EclipseJDTParser`.
+
+**Features:**
+- Replaces regex-based JAR filename parsing
+- Bundle-SymbolicName extraction from MANIFEST.MF
+- Transitive dependency extraction from embedded pom.xml
+- Centralized version registry (no hardcoded mappings)
+- Handles Maven, Gradle, and manual JAR dependencies
+
+**Key Files:**
+- `EclipseJDTParser.java` - Complete Eclipse JDT parser
+- `LSP4JakartaIntegrationExample.java` - Integration helper
+- `README.md` - Complete replacement guide
+
+### 4. [VS Code Extension](vscode-extension/)
 Example implementation for VS Code extensions using `DependencyParser<File>`.
 
 **Features:**

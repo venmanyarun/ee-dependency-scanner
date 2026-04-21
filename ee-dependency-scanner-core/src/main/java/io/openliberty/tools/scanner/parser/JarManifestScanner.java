@@ -102,12 +102,23 @@ public class JarManifestScanner implements CoreDependencyParser<File> {
             if (manifest != null) {
                 Attributes mainAttributes = manifest.getMainAttributes();
                 
+                // Try to extract from Bundle-SymbolicName first (OSGi bundles)
+                String bundleSymbolicName = mainAttributes.getValue("Bundle-SymbolicName");
+                if (bundleSymbolicName != null && !bundleSymbolicName.isEmpty()) {
+                    DependencyInfo bundleInfo = extractFromBundleSymbolicName(
+                        bundleSymbolicName, mainAttributes, jarFile);
+                    if (bundleInfo != null) {
+                        return bundleInfo;
+                    }
+                }
+                
+                // Fallback to standard manifest attributes
                 String groupId = getManifestValue(mainAttributes,
-                    "Implementation-Vendor-Id", "Bundle-SymbolicName");
+                    "Implementation-Vendor-Id");
                 String artifactId = getManifestValue(mainAttributes,
                     "Implementation-Title", "Bundle-Name");
                 String version = getManifestValue(mainAttributes,
-                    "Implementation-Version", "Bundle-Version");
+                    "Implementation-Version", "Bundle-Version", "Specification-Version");
                 
                 if (artifactId != null) {
                     return DependencyInfo.builder()
@@ -125,6 +136,76 @@ public class JarManifestScanner implements CoreDependencyParser<File> {
         } catch (IOException e) {
             return extractFromFilename(jarFile);
         }
+    }
+    
+    /**
+     * Extracts dependency info from OSGi Bundle-SymbolicName.
+     * This handles Jakarta EE JARs that use OSGi bundle naming conventions.
+     *
+     * @param bundleSymbolicName The Bundle-SymbolicName from manifest
+     * @param attributes The manifest attributes
+     * @param jarFile The JAR file
+     * @return DependencyInfo or null if not a recognized bundle
+     */
+    private DependencyInfo extractFromBundleSymbolicName(String bundleSymbolicName,
+                                                         Attributes attributes,
+                                                         File jarFile) {
+        // Remove parameters after semicolon (e.g., "jakarta.servlet-api;singleton:=true")
+        String symbolicName = bundleSymbolicName.split(";")[0].trim();
+        
+        // Only process Jakarta/Java EE bundles
+        if (!isJakartaOrJavaEEBundle(symbolicName)) {
+            return null;
+        }
+        
+        // Extract version from multiple possible attributes
+        String version = getManifestValue(attributes,
+            "Specification-Version",
+            "Implementation-Version",
+            "Bundle-Version",
+            "Jakarta-Version");
+        
+        // For Jakarta bundles, use the symbolic name as artifactId
+        // and extract groupId from the prefix
+        String groupId = null;
+        String artifactId = symbolicName;
+        
+        // Extract groupId from symbolic name pattern (e.g., "jakarta.servlet-api" -> "jakarta.servlet")
+        if (symbolicName.contains(".")) {
+            int lastDot = symbolicName.lastIndexOf('.');
+            String prefix = symbolicName.substring(0, lastDot);
+            String suffix = symbolicName.substring(lastDot + 1);
+            
+            // If suffix is "api" or similar, use prefix as groupId
+            if (suffix.matches("api|spec|core")) {
+                groupId = prefix;
+            } else {
+                // Otherwise, use the full prefix as groupId
+                groupId = prefix;
+            }
+        }
+        
+        return DependencyInfo.builder()
+            .groupId(groupId)
+            .artifactId(artifactId)
+            .version(version)
+            .source(DependencySource.MANIFEST)
+            .jarPath(jarFile.getAbsolutePath())
+            .build();
+    }
+    
+    /**
+     * Checks if a bundle is Jakarta EE or Java EE related.
+     *
+     * @param symbolicName The Bundle-SymbolicName
+     * @return true if Jakarta/Java EE bundle
+     */
+    private boolean isJakartaOrJavaEEBundle(String symbolicName) {
+        String name = symbolicName.toLowerCase();
+        return name.startsWith("jakarta.") ||
+               name.startsWith("javax.") ||
+               name.contains("jakartaee") ||
+               name.contains("javaee");
     }
     
     private String getManifestValue(Attributes attributes, String... names) {
