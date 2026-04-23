@@ -237,15 +237,6 @@ DependencyFilter customFilter = new DependencyFilter.Builder()
     .build();
 ```
 
-## Migration from v1.x
-
-1. **Update dependency version** to 2.0.0
-2. **Replace `parse(File)` calls** with `parse(ProjectRoot, DependencyFilter)`
-3. **Add filtering** where appropriate for better performance
-4. **Update IDE integrations** to use Module/IJavaProject APIs
-
-See [MIGRATION.md](MIGRATION.md) for detailed migration guide.
-
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
