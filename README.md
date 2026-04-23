@@ -55,12 +55,6 @@ List<DependencyInfo> customDeps = parser.parse(module, customFilter);
 - **IDE cache utilization**: Leverages IntelliJ's `OrderEnumerator` and Eclipse's resolved classpath
 - **Fast library checks**: Uses `JavaLibraryUtil` (IntelliJ) for instant dependency detection
 
-**Performance Comparison:**
-```
-Old API: parse(File) → collect all 1000 deps → filter manually → 500ms
-New API: parse(Module, filter) → collect only 10 MP deps → 5ms
-Result: 100x faster!
-```
 
 ## Quick Start
 
