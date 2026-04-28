@@ -4,27 +4,15 @@ Complete, production-ready implementation of the EE Dependency Scanner API for I
 
 ## Overview
 
-This implementation uses `DependencyParser<Module>` to parse IntelliJ IDEA modules with high performance by leveraging IntelliJ's cached dependency information.
+This implementation uses `DependencyParser<Module>` to parse IntelliJ IDEA modules by leveraging IntelliJ's cached dependency information.
 
 ## Key Features
 
 - **Module-specific parsing** - Parse only the module you need, not all projects
 - **OrderEnumerator integration** - Uses IntelliJ's cached dependency traversal
 - **JavaLibraryUtil support** - Fast library class checks without full classpath scanning
-- **Dependency filtering** - 100x faster by filtering during collection
+- **Dependency filtering** - Efficient filtering during collection
 - **Transitive dependencies** - Automatically includes transitive dependencies
-
-## Performance
-
-```
-Old approach: Scan all projects → parse files → collect all deps → filter
-Time: ~500ms for 1000 dependencies
-
-New approach: Use OrderEnumerator → filter during collection
-Time: ~5ms for 10 MicroProfile dependencies
-
-Result: 100x faster!
-```
 
 ## Installation
 
@@ -268,6 +256,5 @@ public class MicroProfileInspection extends LocalInspectionTool {
 ## References
 
 - [IntelliJ Platform SDK](https://plugins.jetbrains.com/docs/intellij/welcome.html)
-- [OrderEnumerator Documentation](https://github.com/JetBrains/intellij-community/blob/master/platform/projectModel-api/src/com/intellij/openapi/roots/OrderEnumerator.java)
-- [JavaLibraryUtil](https://github.com/JetBrains/intellij-community/blob/master/java/java-psi-api/src/com/intellij/psi/util/JavaLibraryUtil.java)
-- [IntelliJ Quarkus Plugin Example](https://github.com/redhat-developer/intellij-quarkus)
+- [OrderEnumerator API](https://github.com/JetBrains/intellij-community/blob/master/platform/projectModel-api/src/com/intellij/openapi/roots/OrderEnumerator.java)
+- [JavaLibraryUtil API](https://github.com/JetBrains/intellij-community/blob/master/java/java-psi-api/src/com/intellij/psi/util/JavaLibraryUtil.java)

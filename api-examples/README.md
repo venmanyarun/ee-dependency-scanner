@@ -11,26 +11,13 @@ Complete implementation for IntelliJ IDEA using `DependencyParser<Module>`.
 - Uses IntelliJ's `OrderEnumerator` for cached dependency access
 - Leverages `JavaLibraryUtil` for fast library checks
 - Module-specific parsing (not all projects)
-- 100x faster with dependency filtering
+- Efficient dependency filtering
 
 **Key Files:**
 - `IntelliJModuleParser.java` - Complete parser implementation
 - `README.md` - Usage guide and integration steps
 
-### 2. [Eclipse Plugin](eclipse-plugin/)
-Complete implementation for Eclipse using `DependencyParser<IJavaProject>`.
-
-**Features:**
-- Uses Eclipse's `IClasspathEntry` for cached dependency access
-- Handles Maven and Gradle project structures
-- Project-specific parsing
-- 80x faster with dependency filtering
-
-**Key Files:**
-- `EclipseJavaProjectParser.java` - Complete parser implementation
-- `README.md` - Usage guide and integration steps
-
-### 3. [LSP4Jakarta Integration](lsp4jakarta-integration/)
+### 2. [LSP4Jakarta Integration](lsp4jakarta-integration/)
 Complete replacement for LSP4Jakarta's JakartaVersionFinder using `EclipseJDTParser`.
 
 **Features:**
@@ -44,18 +31,6 @@ Complete replacement for LSP4Jakarta's JakartaVersionFinder using `EclipseJDTPar
 - `EclipseJDTParser.java` - Complete Eclipse JDT parser
 - `LSP4JakartaIntegrationExample.java` - Integration helper
 - `README.md` - Complete replacement guide
-
-### 4. [VS Code Extension](vscode-extension/)
-Example implementation for VS Code extensions using `DependencyParser<File>`.
-
-**Features:**
-- File-based parsing for Maven/Gradle projects
-- Language Server Protocol (LSP) integration
-- Workspace-aware dependency analysis
-
-**Key Files:**
-- `VSCodeDependencyParser.ts` - TypeScript implementation
-- `README.md` - Usage guide and integration steps
 
 ## Quick Start
 
@@ -93,27 +68,18 @@ public class MyParser implements DependencyParser<MyProjectType> {
 ### 3. Use with Filtering
 
 ```java
-// Only collect MicroProfile dependencies - 100x faster!
+// Only collect MicroProfile dependencies
 List<DependencyInfo> mpDeps = parser.parse(project, DependencyFilter.MICROPROFILE);
 ```
 
-## Performance Benefits
-
-| Platform | Old Approach | New API | Speedup |
-|----------|-------------|---------|---------|
-| IntelliJ | Scan all projects → 500ms | Parse module with filter → 5ms | 100x |
-| Eclipse | Scan filesystem → 800ms | Use resolved classpath → 10ms | 80x |
-| VS Code | Parse all deps → 300ms | Filter during parse → 30ms | 10x |
-
 ## Documentation
 
-- [Migration Guide](../MIGRATION_GUIDE.md) - Migrate from old API
 - [API Documentation](../ee-dependency-scanner-api/) - Complete API reference
-- [Architecture Design](../ARCHITECTURE_REDESIGN.md) - Design decisions
+- [Core Scanner Documentation](../ee-dependency-scanner-core/) - Core library details
 
 ## Support
 
 For questions or issues:
 1. Review the example implementations
-2. Check the [Migration Guide](../MIGRATION_GUIDE.md)
+2. Check the [Core Documentation](../ee-dependency-scanner-core/)
 3. Open an issue on GitHub

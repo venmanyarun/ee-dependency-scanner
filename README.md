@@ -2,11 +2,11 @@
 
 A flexible, extensible library for analyzing Java EE, Jakarta EE, and MicroProfile dependencies across Maven, Gradle, and IDE project models.
 
-## What's New in v2.0
+## Features
 
-### 🚀 Generic API with IDE Support
+### Generic API with IDE Support
 
-The API now supports **generic project types** using Java generics:
+The API supports **generic project types** using Java generics:
 - **File-based projects** (Maven/Gradle) - `DependencyParser<File>`
 - **IntelliJ IDEA Modules** - `DependencyParser<Module>`
 - **Eclipse IJavaProjects** - `DependencyParser<IJavaProject>`
@@ -26,12 +26,12 @@ DependencyParser<IJavaProject> eclipseParser = new EclipseJavaProjectParser();
 List<DependencyInfo> deps = eclipseParser.parse(javaProject);
 ```
 
-### 🎯 Dependency Filtering (100x Faster!)
+### Dependency Filtering
 
-New filtering capabilities allow you to collect only relevant dependencies:
+Filtering capabilities allow you to collect only relevant dependencies:
 
 ```java
-// Only MicroProfile dependencies - 100x faster than collecting all!
+// Only MicroProfile dependencies
 List<DependencyInfo> mpDeps = parser.parse(module, DependencyFilter.MICROPROFILE);
 
 // Only Jakarta EE dependencies
@@ -48,10 +48,10 @@ DependencyFilter customFilter = new DependencyFilter.Builder()
 List<DependencyInfo> customDeps = parser.parse(module, customFilter);
 ```
 
-### ⚡ Performance Improvements
+### Performance Optimizations
 
 - **Module-specific parsing**: Parse only the module you need, not all projects
-- **Early filtering**: Dependencies are filtered during collection (100x faster)
+- **Early filtering**: Dependencies are filtered during collection
 - **IDE cache utilization**: Leverages IntelliJ's `OrderEnumerator` and Eclipse's resolved classpath
 - **Fast library checks**: Uses `JavaLibraryUtil` (IntelliJ) for instant dependency detection
 
@@ -85,7 +85,7 @@ import io.openliberty.tools.scanner.api.*;
 // Create parser
 DependencyParser<File> parser = new MavenPomParser();
 
-// Parse with filtering - 100x faster!
+// Parse with filtering
 List<DependencyInfo> mpDeps = parser.parse(
     new File("/path/to/pom.xml"),
     DependencyFilter.MICROPROFILE
@@ -143,12 +143,10 @@ List<DependencyInfo> javaEEDeps = parser.parse(javaProject, DependencyFilter.JAK
 
 ## Documentation
 
-- **[Migration Guide](MIGRATION_GUIDE.md)** - Migrate from old API to new generic API
-- **[API Examples](api-examples/)** - Complete implementation examples for IntelliJ, Eclipse, and VS Code
+- **[API Examples](api-examples/)** - Complete implementation examples for IntelliJ and Eclipse
   - [IntelliJ Plugin Example](api-examples/intellij-plugin/)
-  - [Eclipse Plugin Example](api-examples/eclipse-plugin/)
-  - [VS Code Extension Example](api-examples/vscode-extension/)
-- **[Architecture Design](ARCHITECTURE_REDESIGN.md)** - Design decisions and rationale
+  - [LSP4Jakarta Integration Example](api-examples/lsp4jakarta-integration/)
+- **[Core Scanner Documentation](ee-dependency-scanner-core/)** - Core library details
 - **[API Documentation](ee-dependency-scanner-api/)** - Complete API reference
 
 ## Supported Technologies
@@ -168,18 +166,7 @@ List<DependencyInfo> javaEEDeps = parser.parse(javaProject, DependencyFilter.JAK
 ### IDEs
 - IntelliJ IDEA (Module API)
 - Eclipse (IJavaProject API)
-- VS Code (File-based)
-
-## Performance Benchmarks
-
-| Scenario | Old Approach | New API | Improvement |
-|----------|-------------|---------|-------------|
-| Check MicroProfile version | 500ms | 5ms | **100x faster** |
-| Parse IntelliJ module | N/A | 5ms | **New capability** |
-| Parse Eclipse project | N/A | 10ms | **New capability** |
-| Filter 1000 dependencies | 500ms | 5ms | **100x faster** |
-
-*Benchmarks on typical Java EE project with 1000 dependencies*
+- File-based (Maven/Gradle)
 
 ## Building
 
@@ -204,23 +191,7 @@ mvn test
 4. Add tests
 5. Submit a pull request
 
-## License
-
-[License information]
-
-## Support
-
-For questions, issues, or feature requests:
-1. Check the [Migration Guide](MIGRATION_GUIDE.md)
-2. Review the [API Examples](api-examples/)
-3. Open an issue on GitHub
-    }
-    
-    // ... other methods
-}
-```
-
-### Custom Filters
+## Custom Filters
 
 Create custom filters for specific needs:
 
@@ -233,20 +204,21 @@ DependencyFilter customFilter = new DependencyFilter.Builder()
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see [LICENSE](LICENSE) for details.
+This project is licensed under the Apache License 2.0.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/openliberty/ee-dependency-scanner/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/openliberty/ee-dependency-scanner/discussions)
-- **Documentation**: [Wiki](https://github.com/openliberty/ee-dependency-scanner/wiki)
-
-## Acknowledgments
-
-- IntelliJ Quarkus Plugin for performance optimization patterns
-- Eclipse JDT, M2E, and Buildship teams for excellent APIs
-- Open Liberty community for feedback and contributions
+For questions, issues, or feature requests:
+1. Review the [API Examples](api-examples/)
+2. Check the [Core Documentation](ee-dependency-scanner-core/)
+3. Open an issue on GitHub

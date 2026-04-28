@@ -258,14 +258,14 @@ boolean hasConflicts = manager.hasVersionConflicts(javaProject);
 
 ## Benefits
 
-| Feature | Old Approach | New Approach |
-|---------|-------------|--------------|
-| **JAR Analysis** | Filename regex only | Manifest + filename |
-| **Version Mapping** | Hardcoded in code | Properties files |
-| **Transitive Deps** | Not supported | Fully supported |
-| **Manual JARs** | Limited support | Full support |
-| **Maintainability** | Code updates needed | Config updates only |
-| **OSGi Bundles** | Basic support | Full Bundle-SymbolicName |
+The new approach provides:
+
+- **JAR Analysis**: Manifest inspection with filename fallback (vs. filename regex only)
+- **Version Mapping**: Properties files (vs. hardcoded in code)
+- **Transitive Dependencies**: Fully supported (vs. not supported)
+- **Manual JARs**: Full support (vs. limited support)
+- **Maintainability**: Config updates only (vs. code updates needed)
+- **OSGi Bundles**: Full Bundle-SymbolicName support (vs. basic support)
 
 ## Testing
 
@@ -280,6 +280,6 @@ All should work seamlessly with the new parser.
 
 ## See Also
 
-- [Eclipse Plugin Example](../eclipse-plugin/README.md) - General Eclipse integration
+- [IntelliJ Plugin Example](../intellij-plugin/README.md) - IntelliJ IDEA integration
 - [Core Scanner Documentation](../../ee-dependency-scanner-core/README.md) - Core library details
 - [API Documentation](../../ee-dependency-scanner-api/) - Complete API reference
