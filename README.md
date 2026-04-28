@@ -141,6 +141,31 @@ if (version != null) {
 List<DependencyInfo> javaEEDeps = parser.parse(javaProject, DependencyFilter.JAKARTA_EE);
 ```
 
+### Build Tool Preference
+
+For projects with both Maven and Gradle configurations, use the builder pattern:
+
+```java
+import io.openliberty.tools.scanner.analyzer.ClasspathAnalyzer;
+import io.openliberty.tools.scanner.analyzer.BuildToolPreference;
+
+// Use Maven only (ignore Gradle files)
+ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder()
+    .buildToolPreference(BuildToolPreference.MAVEN_ONLY)
+    .build();
+DependencyAnalysisResult result = analyzer.analyze("/path/to/project");
+
+// Use Gradle only (ignore Maven files)
+analyzer = ClasspathAnalyzer.builder()
+    .buildToolPreference(BuildToolPreference.GRADLE_ONLY)
+    .build();
+result = analyzer.analyze("/path/to/project");
+
+// Or pass preference directly to analyze method
+analyzer = ClasspathAnalyzer.builder().build();
+result = analyzer.analyze(projectDir, BuildToolPreference.MAVEN_ONLY);
+```
+
 ## Documentation
 
 - **[API Examples](api-examples/)** - Complete implementation examples for IntelliJ and Eclipse

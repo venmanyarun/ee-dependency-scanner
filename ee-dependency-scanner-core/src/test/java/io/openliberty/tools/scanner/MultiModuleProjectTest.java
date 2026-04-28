@@ -56,7 +56,7 @@ public class MultiModuleProjectTest {
         // Create custom JAR with embedded pom.xml containing transitive dependencies
         createCustomJar();
         
-        analyzer = new ClasspathAnalyzer();
+        analyzer = ClasspathAnalyzer.builder().build();
     }
 
     /**

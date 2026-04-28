@@ -38,7 +38,7 @@ class ParserTierExecutionTest {
             Collections.singletonList(dependency("jakarta.platform", "jakarta.jakartaee-api", "9.1.0", DependencySource.MAVEN))
         );
 
-        ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(mavenParser, ideParser));
+        ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder().parsers(Arrays.asList(mavenParser, ideParser)).build();
         DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());
@@ -64,7 +64,7 @@ class ParserTierExecutionTest {
             Collections.singletonList(dependency("jakarta.platform", "jakarta.jakartaee-api", "9.1.0", DependencySource.GRADLE))
         );
 
-        ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(gradleParser, resolvedParser));
+        ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder().parsers(Arrays.asList(gradleParser, resolvedParser)).build();
         DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());
@@ -90,7 +90,7 @@ class ParserTierExecutionTest {
             Collections.singletonList(dependency("jakarta.platform", "jakarta.jakartaee-api", "9.1.0", DependencySource.MAVEN))
         );
 
-        ClasspathAnalyzer analyzer = new ClasspathAnalyzer(Arrays.asList(mavenParser, ideParser));
+        ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder().parsers(Arrays.asList(mavenParser, ideParser)).build();
         DependencyAnalysisResult result = analyzer.analyze(new File("."));
 
         assertEquals(1, result.getAllDependencies().size());

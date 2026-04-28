@@ -68,22 +68,56 @@ implementation 'io.openliberty.tools:ee-dependency-scanner:1.0.0-SNAPSHOT'
 
 ```java
 import io.openliberty.tools.scanner.analyzer.ClasspathAnalyzer;
-import io.openliberty.tools.scanner.model.ClasspathAnalysisResult;
+import io.openliberty.tools.scanner.api.DependencyAnalysisResult;
 
-// Create analyzer
-ClasspathAnalyzer analyzer = new ClasspathAnalyzer();
+// Create analyzer using builder pattern
+ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder().build();
 
 // Analyze a project directory
-ClasspathAnalysisResult result = analyzer.analyze("/path/to/project");
+DependencyAnalysisResult result = analyzer.analyze("/path/to/project");
 
 // Get results
-System.out.println("Total dependencies: " + result.getTotalDependenciesFound());
-System.out.println("Jakarta EE dependencies: " + result.getJakartaEEDependencies().size());
-System.out.println("MicroProfile dependencies: " + result.getMicroProfileDependencies().size());
-
-// Print summary
-System.out.println(result.getSummary());
+System.out.println("Jakarta EE Version: " + result.getJakartaEEVersion());
+System.out.println("Java EE Version: " + result.getJavaEEVersion());
+System.out.println("MicroProfile Version: " + result.getMicroProfileVersion());
 ```
+
+### Build Tool Preference (Maven + Gradle Projects)
+
+For projects with both Maven and Gradle build files, use the builder pattern to specify preferences:
+
+```java
+import io.openliberty.tools.scanner.analyzer.BuildToolPreference;
+
+// Use Maven only (ignore Gradle)
+ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder()
+    .buildToolPreference(BuildToolPreference.MAVEN_ONLY)
+    .build();
+DependencyAnalysisResult result = analyzer.analyze("/path/to/project");
+
+// Use Gradle only (ignore Maven)
+analyzer = ClasspathAnalyzer.builder()
+    .buildToolPreference(BuildToolPreference.GRADLE_ONLY)
+    .build();
+result = analyzer.analyze("/path/to/project");
+
+// Prefer Gradle when both exist
+analyzer.setBuildToolPreference(BuildToolPreference.PREFER_GRADLE);
+result = analyzer.analyze("/path/to/project");
+
+// Or pass preference directly to analyze method
+result = analyzer.analyze(projectDir, BuildToolPreference.MAVEN_ONLY);
+result = analyzer.analyze(projectDir, filter, BuildToolPreference.GRADLE_ONLY);
+```
+
+**Available Preferences:**
+- `AUTO` - Automatically detect (Maven has priority) - **Default**
+- `MAVEN_ONLY` - Use Maven exclusively, ignore Gradle
+- `GRADLE_ONLY` - Use Gradle exclusively, ignore Maven
+- `PREFER_MAVEN` - Prefer Maven when both exist (same as AUTO)
+- `PREFER_GRADLE` - Prefer Gradle when both exist
+
+**Note:** If only one build tool exists, it will be used regardless of preference.
 
 ### Detecting Project Type
 

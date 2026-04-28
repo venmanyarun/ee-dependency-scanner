@@ -25,7 +25,7 @@ class TransitiveDependencyTest {
 
     @BeforeEach
     void setUp() {
-        analyzer = new ClasspathAnalyzer();
+        analyzer = ClasspathAnalyzer.builder().build();
     }
 
     @Test
@@ -166,7 +166,7 @@ class TransitiveDependencyTest {
         List<io.openliberty.tools.scanner.api.DependencyParser<?>> parsers =
             java.util.Arrays.asList(scanner);
         
-        ClasspathAnalyzer customAnalyzer = new ClasspathAnalyzer(parsers);
+        ClasspathAnalyzer customAnalyzer = ClasspathAnalyzer.builder().parsers(parsers).build();
         DependencyAnalysisResult result = customAnalyzer.analyze(projectDir);
         
         // Should only find the JAR itself, not transitive dependencies

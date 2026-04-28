@@ -45,7 +45,7 @@ class ParserProviderSPITest {
             new JarManifestScanner()
         );
         
-        ClasspathAnalyzer analyzer = new ClasspathAnalyzer(customParsers);
+        ClasspathAnalyzer analyzer = ClasspathAnalyzer.builder().parsers(customParsers).build();
         assertNotNull(analyzer, "Analyzer should be created with custom parsers");
     }
     

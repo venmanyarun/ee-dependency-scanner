@@ -13,61 +13,52 @@ import java.util.*;
 
 /**
  * Analyzes project dependencies from various sources (Maven, Gradle, Eclipse, JARs).
+ * <p>
+ * Supports build tool preference for projects with multiple build configurations.
+ * By default, Maven has higher priority than Gradle when both are present.
+ * </p>
  */
 public class ClasspathAnalyzer {
     
     private final List<CoreDependencyParser<?>> parsers;
-    private boolean enableFallbackScanning = true;
+    private final boolean enableFallbackScanning;
+    private final BuildToolPreference buildToolPreference;
     
     /**
-     * Creates analyzer with default parsers loaded via ServiceLoader.
+     * Private constructor used by builder.
      */
-    public ClasspathAnalyzer() {
-        this.parsers = new ArrayList<>();
-        this.parsers.add(new MavenPomParser());
-        this.parsers.add(new GradleBuildParser());
-        this.parsers.add(new EclipseClasspathParser());
-        this.parsers.add(new JarManifestScanner());
-        loadExtensionParsers();
+    private ClasspathAnalyzer(Builder builder) {
+        this.parsers = builder.parsers;
+        this.enableFallbackScanning = builder.enableFallbackScanning;
+        this.buildToolPreference = builder.buildToolPreference;
         Collections.sort(this.parsers);
     }
     
     /**
-     * Creates analyzer with custom parsers.
+     * Creates a new builder for ClasspathAnalyzer.
+     *
+     * @return a new builder instance
      */
-    public ClasspathAnalyzer(List<? extends DependencyParser<?>> parsers) {
-        this.parsers = new ArrayList<>();
-        for (DependencyParser<?> parser : parsers) {
-            if (parser instanceof CoreDependencyParser) {
-                this.parsers.add((CoreDependencyParser<?>) parser);
-            }
-        }
-        Collections.sort(this.parsers);
-    }
-    
-    private void loadExtensionParsers() {
-        try {
-            ServiceLoader<DependencyParserProvider> loader = ServiceLoader.load(DependencyParserProvider.class);
-            List<DependencyParserProvider> providers = new ArrayList<>();
-            loader.forEach(providers::add);
-            providers.sort(Comparator.comparingInt(DependencyParserProvider::getPriority));
-            
-            for (DependencyParserProvider provider : providers) {
-                List<CoreDependencyParser<?>> extensionParsers = provider.getParsers();
-                if (extensionParsers != null) {
-                    this.parsers.addAll(extensionParsers);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to load extension parsers: " + e.getMessage());
-        }
+    public static Builder builder() {
+        return new Builder();
     }
     
     /**
-     * Enables/disables fallback JAR scanning when no build files found.
+     * Gets the current build tool preference.
+     *
+     * @return the build tool preference
      */
-    public void setEnableFallbackScanning(boolean enable) {
-        this.enableFallbackScanning = enable;
+    public BuildToolPreference getBuildToolPreference() {
+        return buildToolPreference;
+    }
+    
+    /**
+     * Checks if fallback scanning is enabled.
+     *
+     * @return true if fallback scanning is enabled
+     */
+    public boolean isFallbackScanningEnabled() {
+        return enableFallbackScanning;
     }
     
     
@@ -86,18 +77,41 @@ public class ClasspathAnalyzer {
      * @return analysis result with detected dependencies
      */
     public DependencyAnalysisResult analyze(File projectPath) {
-        return analyze(projectPath, DependencyFilter.includeAll());
+        return analyze(projectPath, DependencyFilter.includeAll(), buildToolPreference);
+    }
+    
+    /**
+     * Analyzes project for dependencies with build tool preference.
+     *
+     * @param projectPath project directory or build file
+     * @param preference build tool preference for projects with multiple build files
+     * @return analysis result with detected dependencies
+     */
+    public DependencyAnalysisResult analyze(File projectPath, BuildToolPreference preference) {
+        return analyze(projectPath, DependencyFilter.includeAll(), preference);
     }
     
     /**
      * Analyzes project for dependencies with filtering.
-     * This is the preferred method for targeted dependency analysis.
-     * 
-     * @param project the project to analyze (File, Module, IJavaProject, etc.)
+     *
+     * @param projectPath project directory or build file
      * @param filter filter to select specific dependencies
      * @return analysis result with detected dependencies
      */
-    public <T> DependencyAnalysisResult analyze(T project, DependencyFilter filter) {
+    public DependencyAnalysisResult analyze(File projectPath, DependencyFilter filter) {
+        return analyze(projectPath, filter, buildToolPreference);
+    }
+    
+    /**
+     * Analyzes project for dependencies with filtering and build tool preference.
+     * This is the most flexible method for targeted dependency analysis.
+     *
+     * @param project the project to analyze (File, Module, IJavaProject, etc.)
+     * @param filter filter to select specific dependencies
+     * @param preference build tool preference for projects with multiple build files
+     * @return analysis result with detected dependencies
+     */
+    public <T> DependencyAnalysisResult analyze(T project, DependencyFilter filter, BuildToolPreference preference) {
         long startTime = System.currentTimeMillis();
         
         // For File-based projects, check existence
@@ -119,6 +133,11 @@ public class ClasspathAnalyzer {
             int tierJarsScanned = 0;
             
             for (CoreDependencyParser<?> parser : getParsersForTier(tier, project)) {
+                // Apply build tool preference filter
+                if (!shouldUseParser(parser, project, preference)) {
+                    continue;
+                }
+                
                 if (canParseProject(parser, project)) {
                     try {
                         List<DependencyInfo> dependencies = parseProject(parser, project, filter);
@@ -191,6 +210,75 @@ public class ClasspathAnalyzer {
     private <T> List<DependencyInfo> parseProject(CoreDependencyParser<?> parser, T project, DependencyFilter filter) throws ParserException {
         DependencyParser<T> typedParser = (DependencyParser<T>) parser;
         return typedParser.parse(project, filter);
+    }
+    
+    /**
+     * Determines if a parser should be used based on build tool preference.
+     */
+    private <T> boolean shouldUseParser(CoreDependencyParser<?> parser, T project, BuildToolPreference preference) {
+        // Only apply preference to File-based Maven/Gradle parsers
+        if (!(project instanceof File)) {
+            return true; // IDE parsers are not affected by build tool preference
+        }
+        
+        File projectPath = (File) project;
+        String parserName = parser.getName();
+        boolean isMavenParser = parserName.contains("Maven");
+        boolean isGradleParser = parserName.contains("Gradle");
+        
+        // Non-build-tool parsers are always allowed
+        if (!isMavenParser && !isGradleParser) {
+            return true;
+        }
+        
+        // Check if both build files exist
+        boolean hasMaven = hasBuildFile(projectPath, "pom.xml");
+        boolean hasGradle = hasBuildFile(projectPath, "build.gradle") ||
+                           hasBuildFile(projectPath, "build.gradle.kts");
+        
+        // If only one build tool exists, use it regardless of preference
+        if (hasMaven && !hasGradle) {
+            return isMavenParser;
+        }
+        if (hasGradle && !hasMaven) {
+            return isGradleParser;
+        }
+        
+        // If neither exists, allow both (for fallback scenarios)
+        if (!hasMaven && !hasGradle) {
+            return true;
+        }
+        
+        // Both exist - apply preference
+        switch (preference) {
+            case MAVEN_ONLY:
+                return isMavenParser;
+            
+            case GRADLE_ONLY:
+                return isGradleParser;
+            
+            case PREFER_GRADLE:
+                return isGradleParser; // Only use Gradle when both exist
+            
+            case AUTO:
+            case PREFER_MAVEN:
+            default:
+                return isMavenParser; // Default: Maven has priority
+        }
+    }
+    
+    /**
+     * Checks if a build file exists in the project directory.
+     */
+    private boolean hasBuildFile(File projectPath, String fileName) {
+        if (projectPath.isDirectory()) {
+            return new File(projectPath, fileName).exists();
+        } else if (projectPath.isFile()) {
+            // If projectPath is a file, check its parent directory
+            File parent = projectPath.getParentFile();
+            return parent != null && new File(parent, fileName).exists();
+        }
+        return false;
     }
     
     private <T> List<CoreDependencyParser<?>> getParsersForTier(ParserTier tier, T project) {
@@ -305,6 +393,96 @@ public class ClasspathAnalyzer {
         return !result.getJakartaEEDependencies().isEmpty() ||
                !result.getJavaEEDependencies().isEmpty() ||
                !result.getMicroProfileDependencies().isEmpty();
+    }
+    
+    /**
+     * Builder for ClasspathAnalyzer with fluent API.
+     */
+    public static class Builder {
+        private List<CoreDependencyParser<?>> parsers;
+        private boolean enableFallbackScanning = true;
+        private BuildToolPreference buildToolPreference = BuildToolPreference.AUTO;
+        
+        /**
+         * Creates a new builder with default settings.
+         */
+        public Builder() {
+            this.parsers = new ArrayList<>();
+            this.parsers.add(new MavenPomParser());
+            this.parsers.add(new GradleBuildParser());
+            this.parsers.add(new EclipseClasspathParser());
+            this.parsers.add(new JarManifestScanner());
+            loadExtensionParsers();
+        }
+        
+        /**
+         * Sets custom parsers.
+         *
+         * @param parsers list of custom parsers
+         * @return this builder
+         */
+        public Builder parsers(List<? extends DependencyParser<?>> parsers) {
+            this.parsers = new ArrayList<>();
+            for (DependencyParser<?> parser : parsers) {
+                if (parser instanceof CoreDependencyParser) {
+                    this.parsers.add((CoreDependencyParser<?>) parser);
+                }
+            }
+            return this;
+        }
+        
+        /**
+         * Enables or disables fallback JAR scanning when no build files found.
+         *
+         * @param enable true to enable fallback scanning, false to disable
+         * @return this builder
+         */
+        public Builder enableFallbackScanning(boolean enable) {
+            this.enableFallbackScanning = enable;
+            return this;
+        }
+        
+        /**
+         * Sets build tool preference for projects with multiple build configurations.
+         * <p>
+         * Use this when a project has both Maven (pom.xml) and Gradle (build.gradle) files
+         * to explicitly specify which build tool's dependencies should be analyzed.
+         * </p>
+         *
+         * @param preference the build tool preference (default: AUTO with Maven priority)
+         * @return this builder
+         */
+        public Builder buildToolPreference(BuildToolPreference preference) {
+            this.buildToolPreference = preference != null ? preference : BuildToolPreference.AUTO;
+            return this;
+        }
+        
+        /**
+         * Builds the ClasspathAnalyzer instance.
+         *
+         * @return a new ClasspathAnalyzer instance
+         */
+        public ClasspathAnalyzer build() {
+            return new ClasspathAnalyzer(this);
+        }
+        
+        private void loadExtensionParsers() {
+            try {
+                ServiceLoader<DependencyParserProvider> loader = ServiceLoader.load(DependencyParserProvider.class);
+                List<DependencyParserProvider> providers = new ArrayList<>();
+                loader.forEach(providers::add);
+                providers.sort(Comparator.comparingInt(DependencyParserProvider::getPriority));
+                
+                for (DependencyParserProvider provider : providers) {
+                    List<CoreDependencyParser<?>> extensionParsers = provider.getParsers();
+                    if (extensionParsers != null) {
+                        this.parsers.addAll(extensionParsers);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to load extension parsers: " + e.getMessage());
+            }
+        }
     }
 }
 

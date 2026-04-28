@@ -22,7 +22,7 @@ class ExtendedProjectTest {
     
     @BeforeEach
     void setUp() {
-        analyzer = new ClasspathAnalyzer();
+        analyzer = ClasspathAnalyzer.builder().build();
     }
     
     @Test
