@@ -3,45 +3,107 @@ package io.openliberty.tools.scanner.util;
 import io.openliberty.tools.scanner.api.DependencyInfo;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Detects Jakarta EE and MicroProfile platform versions from dependencies.
+ * Detector for Jakarta EE and MicroProfile platform versions from dependencies.
+ * Uses version mappings from properties files to determine platform versions.
  */
 public class VersionDetector {
     
-    private static final VersionMappingRegistry REGISTRY;
+    private static volatile VersionMappingRegistry REGISTRY;
     
-    static {
-        REGISTRY = VersionMappingRegistry.loadFromClasspath();
-        if (!REGISTRY.isValid()) {
-            System.err.println("Warning: Version mapping registry is not valid. " +
-                             "Ensure jakarta-ee-versions.properties and microprofile-versions.properties " +
-                             "are present in classpath.");
+    // Cache for version detection results
+    private static final Map<Integer, Set<String>> JAKARTA_VERSION_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Integer, Set<String>> MP_VERSION_CACHE = new ConcurrentHashMap<>();
+    
+    /**
+     * Gets or initializes the version registry.
+     */
+    private static VersionMappingRegistry getRegistry() {
+        if (REGISTRY == null) {
+            synchronized (VersionDetector.class) {
+                if (REGISTRY == null) {
+                    REGISTRY = VersionMappingRegistry.loadFromClasspath();
+                    if (!REGISTRY.isValid()) {
+                        System.err.println("Warning: Version mapping registry is not valid. " +
+                                         "Ensure jakarta-ee-versions.properties and microprofile-versions.properties " +
+                                         "are present in classpath.");
+                    }
+                }
+            }
         }
+        return REGISTRY;
     }
     
     /**
-     * Detects Jakarta EE platform versions from dependencies.
+     * Clears all caches. Useful for testing.
+     */
+    public static void clearCaches() {
+        JAKARTA_VERSION_CACHE.clear();
+        MP_VERSION_CACHE.clear();
+    }
+    
+    /**
+     * Detects Jakarta EE platform versions from dependencies (cached).
      * @param dependencies list of dependencies to analyze
      * @return set of detected platform versions
      */
     public static Set<String> detectJakartaEEVersion(List<DependencyInfo> dependencies) {
-        Set<String> versions = new HashSet<>();
+        int cacheKey = computeDependencyHash(dependencies);
         
+        return JAKARTA_VERSION_CACHE.computeIfAbsent(cacheKey, k -> 
+            detectJakartaEEVersionInternal(dependencies)
+        );
+    }
+    
+    /**
+     * Detects MicroProfile platform versions from dependencies (cached).
+     * @param dependencies list of dependencies to analyze
+     * @return set of detected platform versions
+     */
+    public static Set<String> detectMicroProfileVersion(List<DependencyInfo> dependencies) {
+        int cacheKey = computeDependencyHash(dependencies);
+        
+        return MP_VERSION_CACHE.computeIfAbsent(cacheKey, k -> 
+            detectMicroProfileVersionInternal(dependencies)
+        );
+    }
+    
+    private static int computeDependencyHash(List<DependencyInfo> dependencies) {
+        int hash = 1;
         for (DependencyInfo dep : dependencies) {
-            if (!dep.isJakartaEE() && !dep.isJavaEE()) continue;
-            
-            String platformVersion = REGISTRY.getJakartaEEPlatformVersion(
-                dep.getArtifactId(),
-                dep.getVersion()
-            );
-            
-            if (platformVersion != null) {
-                versions.add(platformVersion);
-            } else {
-                String inferredVersion = inferJakartaEEVersion(dep);
-                if (inferredVersion != null) {
-                    versions.add(inferredVersion);
+            if (dep.isJakartaEE() || dep.isJavaEE() || dep.isMicroProfile()) {
+                hash = 31 * hash + (dep.getArtifactId() != null ? dep.getArtifactId().hashCode() : 0);
+                hash = 31 * hash + (dep.getVersion() != null ? dep.getVersion().hashCode() : 0);
+            }
+        }
+        return hash;
+    }
+    
+    private static Set<String> detectJakartaEEVersionInternal(List<DependencyInfo> dependencies) {
+        Set<String> versions = new HashSet<>();
+        VersionMappingRegistry registry = getRegistry();
+        
+        // Use parallel stream for large lists
+        if (dependencies.size() > 50) {
+            dependencies.parallelStream()
+                .filter(dep -> dep.isJakartaEE() || dep.isJavaEE())
+                .forEach(dep -> {
+                    String platformVersion = detectSingleJakartaVersion(dep, registry);
+                    if (platformVersion != null) {
+                        synchronized (versions) {
+                            versions.add(platformVersion);
+                        }
+                    }
+                });
+        } else {
+            for (DependencyInfo dep : dependencies) {
+                if (!dep.isJakartaEE() && !dep.isJavaEE()) continue;
+                
+                String platformVersion = detectSingleJakartaVersion(dep, registry);
+                if (platformVersion != null) {
+                    versions.add(platformVersion);
                 }
             }
         }
@@ -49,94 +111,67 @@ public class VersionDetector {
         return versions;
     }
     
-    /**
-     * Detects MicroProfile platform versions from dependencies.
-     * @param dependencies list of dependencies to analyze
-     * @return set of detected platform versions
-     */
-    public static Set<String> detectMicroProfileVersion(List<DependencyInfo> dependencies) {
-        Set<String> versions = new HashSet<>();
+    private static String detectSingleJakartaVersion(DependencyInfo dep, VersionMappingRegistry registry) {
+        // Try exact lookup from properties file
+        String platformVersion = registry.getJakartaEEPlatformVersion(
+            dep.getArtifactId(),
+            dep.getVersion()
+        );
         
-        for (DependencyInfo dep : dependencies) {
-            if (!dep.isMicroProfile()) continue;
-            
-            String platformVersion = REGISTRY.getMicroProfilePlatformVersion(
-                dep.getArtifactId(),
-                dep.getVersion()
-            );
-            
-            if (platformVersion != null) {
-                versions.add(platformVersion);
+        if (platformVersion != null) {
+            return platformVersion;
+        }
+        
+        // Try fuzzy matching with properties file data
+        return registry.findBestJakartaEEMatch(dep.getArtifactId(), dep.getVersion());
+    }
+    
+    private static Set<String> detectMicroProfileVersionInternal(List<DependencyInfo> dependencies) {
+        Set<String> versions = new HashSet<>();
+        VersionMappingRegistry registry = getRegistry();
+        
+        // Use parallel stream for large lists
+        if (dependencies.size() > 50) {
+            dependencies.parallelStream()
+                .filter(DependencyInfo::isMicroProfile)
+                .forEach(dep -> {
+                    String platformVersion = detectSingleMicroProfileVersion(dep, registry);
+                    
+                    if (platformVersion != null) {
+                        synchronized (versions) {
+                            versions.add(platformVersion);
+                        }
+                    }
+                });
+        } else {
+            for (DependencyInfo dep : dependencies) {
+                if (!dep.isMicroProfile()) continue;
+                
+                String platformVersion = detectSingleMicroProfileVersion(dep, registry);
+                
+                if (platformVersion != null) {
+                    versions.add(platformVersion);
+                }
             }
         }
         
         return versions;
     }
     
-    private static String inferJakartaEEVersion(DependencyInfo dep) {
-        String version = dep.getVersion();
-        if (version == null) return null;
+    private static String detectSingleMicroProfileVersion(DependencyInfo dep, VersionMappingRegistry registry) {
+        // Try exact lookup from properties file
+        String platformVersion = registry.getMicroProfilePlatformVersion(
+            dep.getArtifactId(),
+            dep.getVersion()
+        );
         
-        if (dep.getArtifactId().contains("servlet")) {
-            if (version.startsWith("6.1")) return "11";
-            if (version.startsWith("6.0")) return "10";
-            if (version.startsWith("5.")) return "9";
-            if (version.startsWith("4.")) return "8";
-            if (version.startsWith("3.1")) return "7";
-            if (version.startsWith("3.0")) return "6";
+        if (platformVersion != null) {
+            return platformVersion;
         }
         
-        if (dep.getArtifactId().contains("persistence")) {
-            if (version.startsWith("3.2")) return "11";
-            if (version.startsWith("3.1")) return "10";
-            if (version.startsWith("3.0")) return "9";
-            if (version.startsWith("2.2")) return "8";
-            if (version.startsWith("2.1")) return "7";
-            if (version.startsWith("2.0")) return "6";
-        }
-        
-        if (dep.getArtifactId().contains("cdi")) {
-            if (version.startsWith("4.1")) return "11";
-            if (version.startsWith("4.0")) return "10";
-            if (version.startsWith("3.")) return "9";
-            if (version.startsWith("2.")) return "8";
-            if (version.startsWith("1.2")) return "7";
-            if (version.startsWith("1.1")) return "7";
-            if (version.startsWith("1.0")) return "6";
-        }
-        
-        if (dep.getArtifactId().contains("faces") || dep.getArtifactId().contains("jsf")) {
-            if (version.startsWith("4.")) return "10";
-            if (version.startsWith("3.")) return "9";
-            if (version.startsWith("2.3")) return "8";
-            if (version.startsWith("2.2")) return "7";
-            if (version.startsWith("2.1")) return "7";
-            if (version.startsWith("2.0")) return "6";
-        }
-        
-        if (dep.getArtifactId().contains("jaxrs") || dep.getArtifactId().contains("restful")) {
-            if (version.startsWith("3.")) return "9";
-            if (version.startsWith("2.1")) return "8";
-            if (version.startsWith("2.0")) return "7";
-            if (version.startsWith("1.1")) return "6";
-        }
-        
-        if (dep.getArtifactId().contains("ejb")) {
-            if (version.startsWith("4.")) return "10";
-            if (version.startsWith("3.2")) return "7";
-            if (version.startsWith("3.1")) return "6";
-        }
-        
-        if (dep.getArtifactId().contains("validation")) {
-            if (version.startsWith("3.")) return "9";
-            if (version.startsWith("2.")) return "8";
-            if (version.startsWith("1.1")) return "7";
-            if (version.startsWith("1.0")) return "6";
-        }
-        
-        return null;
+        // Try fuzzy matching with properties file data
+        return registry.findBestMicroProfileMatch(dep.getArtifactId(), dep.getVersion());
     }
-    
     
     private static String extractFeatureName(String artifactId) {
         if (artifactId == null) {
@@ -213,3 +248,4 @@ public class VersionDetector {
     }
 }
 
+// Made with Bob

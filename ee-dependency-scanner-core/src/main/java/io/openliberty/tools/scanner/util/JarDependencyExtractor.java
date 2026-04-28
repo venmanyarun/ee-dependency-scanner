@@ -10,21 +10,51 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.jar.Attributes;
 
 /**
- * Extracts transitive dependencies from JAR files via embedded pom.xml,
- * MANIFEST.MF Class-Path, and OSGi metadata.
+ * Extractor for transitive dependencies from JAR files.
+ *
+ * Extracts dependencies via:
+ * - Embedded pom.xml
+ * - MANIFEST.MF Class-Path
+ * - OSGi metadata
  */
 public class JarDependencyExtractor {
     
     private static final JarDependencyExtractor DEFAULT_INSTANCE = new JarDependencyExtractor();
     
+    // Thread-local SAXReader for XML parsing (reusable, not thread-safe)
+    private static final ThreadLocal<SAXReader> SAX_READER = ThreadLocal.withInitial(() -> {
+        SAXReader reader = new SAXReader();
+        try {
+            // Disable external entity resolution for security
+            reader.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            reader.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        } catch (Exception e) {
+            // Ignore if features not supported
+        }
+        return reader;
+    });
+    
+    // Cache for parsed JAR files
+    private final Map<String, List<DependencyInfo>> cache;
+    
+    public JarDependencyExtractor() {
+        this(true);
+    }
+    
+    public JarDependencyExtractor(boolean enableCaching) {
+        this.cache = enableCaching ? new ConcurrentHashMap<>() : null;
+    }
+    
     /**
-     * Extracts all dependencies from JAR file.
+     * Extracts all dependencies from JAR file (static convenience method).
      * @param jarFile JAR file to analyze
      * @return list of dependencies found
      */
@@ -33,20 +63,65 @@ public class JarDependencyExtractor {
     }
     
     /**
-     * Instance method to extract dependencies from JAR.
+     * Extracts dependencies from multiple JAR files in parallel.
+     * @param jarFiles list of JAR files to analyze
+     * @return map of file path to dependencies
+     */
+    public static Map<String, List<DependencyInfo>> extractDependenciesBatch(List<File> jarFiles) {
+        return DEFAULT_INSTANCE.extractBatch(jarFiles);
+    }
+    
+    /**
+     * Instance method to extract dependencies from JAR (cached).
      * @param jarFile JAR file to analyze
      * @return list of dependencies found
      */
     public List<DependencyInfo> extract(File jarFile) {
+        if (cache != null) {
+            String cacheKey = jarFile.getAbsolutePath() + ":" + jarFile.lastModified();
+            return cache.computeIfAbsent(cacheKey, k -> extractInternal(jarFile));
+        }
+        return extractInternal(jarFile);
+    }
+    
+    /**
+     * Extracts dependencies from multiple JAR files in parallel.
+     * @param jarFiles list of JAR files
+     * @return map of file path to dependencies
+     */
+    public Map<String, List<DependencyInfo>> extractBatch(List<File> jarFiles) {
+        Map<String, List<DependencyInfo>> results = new ConcurrentHashMap<>();
+        
+        jarFiles.parallelStream().forEach(jarFile -> {
+            List<DependencyInfo> deps = extract(jarFile);
+            results.put(jarFile.getAbsolutePath(), deps);
+        });
+        
+        return results;
+    }
+    
+    /**
+     * Clears the cache.
+     */
+    public void clearCache() {
+        if (cache != null) {
+            cache.clear();
+        }
+    }
+    
+    private List<DependencyInfo> extractInternal(File jarFile) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
         try (JarFile jar = new JarFile(jarFile)) {
+            // Extract from embedded POM (most reliable)
             List<DependencyInfo> pomDeps = extractFromEmbeddedPom(jar);
             dependencies.addAll(pomDeps);
             
+            // Extract from MANIFEST Class-Path
             List<DependencyInfo> manifestDeps = extractFromManifestClassPath(jar);
             dependencies.addAll(manifestDeps);
             
+            // Extract from OSGi metadata
             List<DependencyInfo> osgiBundleDeps = extractFromOSGiMetadata(jar);
             dependencies.addAll(osgiBundleDeps);
             
@@ -68,6 +143,8 @@ public class JarDependencyExtractor {
             if (name.startsWith("META-INF/maven/") && name.endsWith("/pom.xml")) {
                 try (InputStream is = jar.getInputStream(entry)) {
                     dependencies.addAll(parsePomXml(is));
+                    // Only parse the first pom.xml found
+                    break;
                 } catch (Exception e) {
                     System.err.println("Failed to parse embedded pom.xml: " + name + " - " + e.getMessage());
                 }
@@ -80,7 +157,7 @@ public class JarDependencyExtractor {
     protected List<DependencyInfo> parsePomXml(InputStream pomStream) throws Exception {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
-        SAXReader reader = new SAXReader();
+        SAXReader reader = SAX_READER.get();
         Document document = reader.read(pomStream);
         Element root = document.getRootElement();
         
@@ -137,6 +214,7 @@ public class JarDependencyExtractor {
         
         String scope = scopeElement != null ? scopeElement.getTextTrim() : "compile";
         
+        // Skip test and provided dependencies
         if ("test".equals(scope) || "provided".equals(scope)) return null;
         
         String groupId = resolveProperty(groupIdElement.getTextTrim(), properties);
@@ -200,6 +278,7 @@ public class JarDependencyExtractor {
             filename = filename.substring(0, filename.length() - 4);
         }
         
+        // Try to parse Maven-style filename: artifactId-version.jar
         String[] parts = filename.split("-(?=\\d)");
         
         if (parts.length >= 2) {
@@ -248,6 +327,7 @@ public class JarDependencyExtractor {
     protected List<DependencyInfo> parseOSGiRequireBundle(String requireBundle) {
         List<DependencyInfo> dependencies = new ArrayList<>();
         
+        // Split by comma, but respect quoted strings
         String[] bundles = requireBundle.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
         
         for (String bundle : bundles) {
@@ -275,3 +355,4 @@ public class JarDependencyExtractor {
     }
 }
 
+// Made with Bob
