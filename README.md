@@ -55,12 +55,6 @@ List<DependencyInfo> customDeps = parser.parse(module, customFilter);
 - **IDE cache utilization**: Leverages IntelliJ's `OrderEnumerator` and Eclipse's resolved classpath
 - **Fast library checks**: Uses `JavaLibraryUtil` (IntelliJ) for instant dependency detection
 
-**Performance Comparison:**
-```
-Old API: parse(File) → collect all 1000 deps → filter manually → 500ms
-New API: parse(Module, filter) → collect only 10 MP deps → 5ms
-Result: 100x faster!
-```
 
 ## Quick Start
 
@@ -236,15 +230,6 @@ DependencyFilter customFilter = new DependencyFilter.Builder()
     .addArtifactIdPrefix("myframework-")
     .build();
 ```
-
-## Migration from v1.x
-
-1. **Update dependency version** to 2.0.0
-2. **Replace `parse(File)` calls** with `parse(ProjectRoot, DependencyFilter)`
-3. **Add filtering** where appropriate for better performance
-4. **Update IDE integrations** to use Module/IJavaProject APIs
-
-See [MIGRATION.md](MIGRATION.md) for detailed migration guide.
 
 ## Contributing
 
